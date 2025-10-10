@@ -3,12 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sparepart;
-use App\Models\Brand;      // Asumsi model Brand sudah ada
-use App\Models\Category;   // Asumsi model Category sudah ada
+use App\Models\Brand;      
+use App\Models\Category;   
+use App\Models\SparepartImage; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use App\Models\SparepartImage; // ⭐ Import Model baru
+
 class SparepartController extends Controller
 {
     /**
@@ -16,17 +17,17 @@ class SparepartController extends Controller
      */
     public function index()
     {
-        // Mengambil data sparepart dengan relasi Brand dan Category, serta pagination
-        $spareparts = Sparepart::with(['brand', 'category'])->paginate(10); // Sesuaikan jumlah per halaman
-        $brands = Brand::orderBy('nama_brand')->get(); // Diperlukan untuk modal tambah
-        $categorys = Category::orderBy('nama_kategori')->get(); // Diperlukan untuk modal tambah
+        $spareparts = Sparepart::with(['brand', 'category', 'images'])->paginate(10); 
+        $brands = Brand::orderBy('nama_brand')->get(); 
+        // ⭐ KOREKSI 1: Menggunakan nama variabel $categories yang konsisten
+        $categories = Category::orderBy('nama_kategori')->get(); 
 
-        return view('spareparts.index', compact('spareparts', 'brands',));
+        // ⭐ KOREKSI 2: Memasukkan $categories ke compact
+        return view('spareparts.index', compact('spareparts', 'brands', 'categories'));
     }
 
     public function create()
     {
-        // Ambil semua Brand dan Category untuk dropdown
         $brands = Brand::orderBy('nama_brand')->get();
         $categories = Category::orderBy('nama_kategori')->get();
 
@@ -48,13 +49,14 @@ class SparepartController extends Controller
             'lokasi_penyimpanan' => ['nullable', 'string', 'max:255'],
             'jumlah_stok' => ['nullable', 'integer', 'min:0'],
             'jumlah_satuan' => ['nullable', 'string', 'max:50'],
-            // ⭐ VALIDASI BARU untuk banyak gambar
-            'gambar_tambahan' => ['nullable', 'array'], 
-            'gambar_tambahan.*' => ['image', 'mimes:jpeg,png,jpg,gif,svg', 'max:20048'], 
+            'gambar_tambahan' => ['required', 'array', 'min:1'], // Minimal harus ada 1 gambar
+            'gambar_tambahan.*' => ['image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'], // Ubah max:20048 ke 2048 (2MB) untuk standar
         ]);
 
         // 1. Buat Sparepart utama (tanpa gambar)
-        $sparepart = Sparepart::create($validatedData);
+        // Hapus kunci gambar_tambahan dari validatedData agar tidak dimasukkan ke tabel Sparepart
+        $dataToStore = array_diff_key($validatedData, array_flip(['gambar_tambahan']));
+        $sparepart = Sparepart::create($dataToStore);
 
         // 2. Proses dan simpan gambar-gambar tambahan
         if ($request->hasFile('gambar_tambahan')) {
@@ -64,16 +66,22 @@ class SparepartController extends Controller
         return redirect()->route('spareparts.index')->with('success', 'Sparepart berhasil ditambahkan!');
     }
 
+    /**
+     * Helper function untuk menyimpan file gambar.
+     */
     protected function saveImages(array $files, int $sparepartId)
     {
-        $order = 0;
+        // Tentukan urutan berikutnya berdasarkan jumlah gambar yang sudah ada
+        $lastOrder = SparepartImage::where('sparepart_id', $sparepartId)->max('order') ?? -1;
+        $order = $lastOrder + 1;
+
         foreach ($files as $file) {
-            // ⭐ Menyimpan ke folder 'spareparts' di disk 'public'
+            // Menyimpan ke folder 'spareparts' di disk 'public'
             $path = $file->store('spareparts', 'public'); 
 
             SparepartImage::create([
                 'sparepart_id' => $sparepartId,
-                'path' => $path, // path akan berbentuk: 'spareparts/namafile.jpg'
+                'path' => $path, 
                 'order' => $order++,
             ]);
         }
@@ -84,10 +92,11 @@ class SparepartController extends Controller
      */
     public function edit(Sparepart $sparepart)
     {
+        $sparepart->load('images'); // ⭐ Pastikan relasi images dimuat di sini
         $brands = Brand::orderBy('nama_brand')->get();
-        $categorys = Category::orderBy('nama_kategori')->get();
+        $categories = Category::orderBy('nama_kategori')->get();
 
-        return view('spareparts.edit', compact('sparepart', 'brands', 'categorys'));
+        return view('spareparts.edit', compact('sparepart', 'brands', 'categories'));
     }
 
     /**
@@ -109,38 +118,54 @@ class SparepartController extends Controller
             'lokasi_penyimpanan' => ['nullable', 'string', 'max:255'],
             'jumlah_stok' => ['nullable', 'integer', 'min:0'],
             'jumlah_satuan' => ['nullable', 'string', 'max:50'],
-            // ⭐ VALIDASI BARU untuk banyak gambar
             'gambar_tambahan' => ['nullable', 'array'], 
-            'gambar_tambahan.*' => ['image', 'mimes:jpeg,png,jpg,gif,svg', 'max:20000'],
+            'gambar_tambahan.*' => ['image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
         ]);
-
-        if ($request->hasFile('gambar_utama')) {
-            // 1. Hapus gambar lama (Path yang tersimpan di DB sudah relatif ke disk 'public')
-            if ($sparepart->gambar_utama && Storage::disk('public')->exists($sparepart->gambar_utama)) {
-                Storage::disk('public')->delete($sparepart->gambar_utama); 
-            }
-            
-            // 2. Simpan gambar baru
-            // KOREKSI: Menggunakan disk 'public' secara eksplisit
-            $path = $request->file('gambar_utama')->store('spareparts', 'public');
-            $validatedData['gambar_utama'] = $path;
+        
+        $dataToUpdate = array_diff_key($validatedData, array_flip(['gambar_tambahan']));
+        $sparepart->update($dataToUpdate);
+        
+        // 1. Proses dan simpan gambar-gambar tambahan BARU
+        if ($request->hasFile('gambar_tambahan')) {
+            $this->saveImages($request->file('gambar_tambahan'), $sparepart->id);
         }
 
-        $sparepart->update($validatedData);
-
+        // ⭐ KOREKSI PENTING: Logika untuk menghapus gambar yang diminta
+        if ($request->input('images_to_delete')) {
+            // images_to_delete akan berisi string ID yang dipisahkan koma, 
+            // misalnya "1,5,8". Kita pisahkan menjadi array.
+            $this->deleteImages(explode(',', $request->input('images_to_delete')));
+        }
+        
         return redirect()->route('spareparts.index')->with('success', 'Sparepart berhasil diperbarui!');
     }
 
+    /**
+     * Helper function untuk menghapus gambar berdasarkan ID.
+     */
+    protected function deleteImages(array $imageIds)
+    {
+        $images = SparepartImage::whereIn('id', $imageIds)->get();
+
+        foreach ($images as $image) {
+            // Hapus file fisik dari storage
+            Storage::disk('public')->delete($image->path);
+            // Hapus record dari database
+            $image->delete();
+        }
+    }
+    
     /**
      * Menghapus data sparepart.
      */
     public function destroy(Sparepart $sparepart)
     {
-        // ⭐ PENGHAPUSAN: Relasi onDelete('cascade') di migrasi 
+        // Hapus file fisik gambar terkait
         $sparepart->images->each(function ($image) {
             Storage::disk('public')->delete($image->path);
         });
 
+        // Hapus record Sparepart dan secara otomatis images-nya (karena onDelete('cascade'))
         $sparepart->delete();
 
         return redirect()->route('spareparts.index')->with('success', 'Sparepart berhasil dihapus!');

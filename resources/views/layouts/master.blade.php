@@ -46,7 +46,7 @@
     </div>
     <!-- / Layout wrapper -->
     <!-- latest jquery-->
-    @include('layouts.script')
+    @include('layouts.script') <-- MEMUAT JQUERY &@yield('js')
     <!-- Plugin used-->
     <script type="text/javascript">
     </script>

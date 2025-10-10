@@ -20,10 +20,9 @@ class Sparepart extends Model
         'lokasi_penyimpanan',
         'jumlah_stok',
         'jumlah_satuan',
-        // HAPUS 'gambar_utama' dari sini
+        // 'gambar_utama' sudah dihapus dari fillable
     ];
     
-    // Relasi dengan Brand dan Category (Tetap ada)
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);
@@ -34,13 +33,13 @@ class Sparepart extends Model
         return $this->belongsTo(Category::class);
     }
 
-    // ⭐ RELASI BARU: Sparepart memiliki banyak gambar tambahan
+    // ⭐ Relasi Gambar
     public function images(): HasMany
     {
         return $this->hasMany(SparepartImage::class)->orderBy('order');
     }
 
-    // 💡 Helper untuk mendapatkan gambar utama (Gambar pertama dari koleksi images)
+    // Helper untuk mendapatkan gambar utama (Gambar pertama dari koleksi images)
     public function getGambarUtamaAttribute()
     {
         return $this->images->first();
