@@ -22,8 +22,8 @@
                 <div data-i18n="Dashboards">Dashboard</div>
             </a>
         </li>
-        <li class="menu-item {{ request()->segment(1) == 'brands' ? 'active' : '' }}">
-            <a href="{{ route('brands.index') }}" class="menu-link">
+        <li class="menu-item {{ Request::is('master_data/brands*') ? 'active' : '' }}">
+            <a href="{{ url('master_data/brands') }}" class="menu-link">
                 <i class="menu-icon tf-icons bi bi-bag-dash-fill"></i>
                 <div data-i18n="Brands">Brands</div>
             </a>

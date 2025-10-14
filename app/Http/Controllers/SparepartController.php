@@ -9,6 +9,10 @@ use App\Models\SparepartImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Http\JsonResponse;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\SparepartsImport;
+use App\Exports\SparepartsTemplateExport; // Tambahkan ini
 
 class SparepartController extends Controller
 {
@@ -17,12 +21,11 @@ class SparepartController extends Controller
      */
     public function index()
     {
+        // Memuat relasi images untuk gambar utama di tabel index
         $spareparts = Sparepart::with(['brand', 'category', 'images'])->paginate(10); 
         $brands = Brand::orderBy('nama_brand')->get(); 
-        // ⭐ KOREKSI 1: Menggunakan nama variabel $categories yang konsisten
-        $categories = Category::orderBy('nama_kategori')->get(); 
+        $categories = Category::orderBy('nama_kategori')->get();
 
-        // ⭐ KOREKSI 2: Memasukkan $categories ke compact
         return view('spareparts.index', compact('spareparts', 'brands', 'categories'));
     }
 
@@ -49,16 +52,15 @@ class SparepartController extends Controller
             'lokasi_penyimpanan' => ['nullable', 'string', 'max:255'],
             'jumlah_stok' => ['nullable', 'integer', 'min:0'],
             'jumlah_satuan' => ['nullable', 'string', 'max:50'],
-            'gambar_tambahan' => ['required', 'array', 'min:1'], // Minimal harus ada 1 gambar
-            'gambar_tambahan.*' => ['image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'], // Ubah max:20048 ke 2048 (2MB) untuk standar
+            'gambar_tambahan' => ['required', 'array', 'min:1'],
+            'gambar_tambahan.*' => ['image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
         ]);
 
-        // 1. Buat Sparepart utama (tanpa gambar)
-        // Hapus kunci gambar_tambahan dari validatedData agar tidak dimasukkan ke tabel Sparepart
+        // Buat Sparepart utama (hapus input file dari data utama)
         $dataToStore = array_diff_key($validatedData, array_flip(['gambar_tambahan']));
         $sparepart = Sparepart::create($dataToStore);
 
-        // 2. Proses dan simpan gambar-gambar tambahan
+        // Proses dan simpan gambar-gambar tambahan
         if ($request->hasFile('gambar_tambahan')) {
             $this->saveImages($request->file('gambar_tambahan'), $sparepart->id);
         }
@@ -66,17 +68,13 @@ class SparepartController extends Controller
         return redirect()->route('spareparts.index')->with('success', 'Sparepart berhasil ditambahkan!');
     }
 
-    /**
-     * Helper function untuk menyimpan file gambar.
-     */
     protected function saveImages(array $files, int $sparepartId)
     {
-        // Tentukan urutan berikutnya berdasarkan jumlah gambar yang sudah ada
         $lastOrder = SparepartImage::where('sparepart_id', $sparepartId)->max('order') ?? -1;
         $order = $lastOrder + 1;
 
         foreach ($files as $file) {
-            // Menyimpan ke folder 'spareparts' di disk 'public'
+            // Menyimpan ke disk 'public'
             $path = $file->store('spareparts', 'public'); 
 
             SparepartImage::create([
@@ -92,7 +90,8 @@ class SparepartController extends Controller
      */
     public function edit(Sparepart $sparepart)
     {
-        $sparepart->load('images'); // ⭐ Pastikan relasi images dimuat di sini
+        // Memuat relasi images untuk ditampilkan di form edit
+        $sparepart->load('images');
         $brands = Brand::orderBy('nama_brand')->get();
         $categories = Category::orderBy('nama_kategori')->get();
 
@@ -121,53 +120,103 @@ class SparepartController extends Controller
             'gambar_tambahan' => ['nullable', 'array'], 
             'gambar_tambahan.*' => ['image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
         ]);
+
         
-        $dataToUpdate = array_diff_key($validatedData, array_flip(['gambar_tambahan']));
+        // --- 2. UPDATE DATA SPAREPART UTAMA ---
+        // Hapus input file dari data update
+        $dataToUpdate = array_diff_key($validatedData, array_flip(['gambar_tambahan'])); 
         $sparepart->update($dataToUpdate);
         
-        // 1. Proses dan simpan gambar-gambar tambahan BARU
+        // --- 3. PROSES TAMBAH GAMBAR BARU ---
         if ($request->hasFile('gambar_tambahan')) {
             $this->saveImages($request->file('gambar_tambahan'), $sparepart->id);
-        }
-
-        // ⭐ KOREKSI PENTING: Logika untuk menghapus gambar yang diminta
-        if ($request->input('images_to_delete')) {
-            // images_to_delete akan berisi string ID yang dipisahkan koma, 
-            // misalnya "1,5,8". Kita pisahkan menjadi array.
-            $this->deleteImages(explode(',', $request->input('images_to_delete')));
         }
         
         return redirect()->route('spareparts.index')->with('success', 'Sparepart berhasil diperbarui!');
     }
 
     /**
-     * Helper function untuk menghapus gambar berdasarkan ID.
+     * Menghapus gambar tambahan via AJAX.
      */
-    protected function deleteImages(array $imageIds)
+    public function deleteImage(SparepartImage $image): JsonResponse
     {
-        $images = SparepartImage::whereIn('id', $imageIds)->get();
-
-        foreach ($images as $image) {
+        try {
             // Hapus file fisik dari storage
-            Storage::disk('public')->delete($image->path);
+            if (Storage::disk('public')->exists($image->path)) {
+                Storage::disk('public')->delete($image->path);
+            }
+            
             // Hapus record dari database
             $image->delete();
+
+            return response()->json([
+                'success' => true, 
+                'message' => 'Gambar berhasil dihapus.', 
+                'imageId' => $image->id
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Gagal menghapus gambar: ' . $e->getMessage()
+            ], 500);
         }
     }
+
     
     /**
      * Menghapus data sparepart.
      */
     public function destroy(Sparepart $sparepart)
     {
-        // Hapus file fisik gambar terkait
+        // Hapus file fisik semua gambar terkait
         $sparepart->images->each(function ($image) {
             Storage::disk('public')->delete($image->path);
         });
 
-        // Hapus record Sparepart dan secara otomatis images-nya (karena onDelete('cascade'))
+        // Hapus record Sparepart
         $sparepart->delete();
 
+        // Ganti JSON Response dengan redirect kembali ke index
         return redirect()->route('spareparts.index')->with('success', 'Sparepart berhasil dihapus!');
     }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls'
+        ]);
+        
+        try {
+            // Gunakan facade Excel untuk mengimpor data
+            Excel::import(new SparepartsImport, $request->file('file'));
+
+            return redirect()->route('spareparts.index')->with('success', 'Import data sparepart berhasil dilakukan!');
+
+        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            $failures = $e->failures();
+            
+            // Kumpulkan pesan error validasi baris Excel
+            $errors = [];
+            foreach ($failures as $failure) {
+                $errors[] = "Baris " . $failure->row() . ": " . implode(", ", $failure->errors());
+            }
+            
+            // Redirect dengan pesan error
+            return redirect()->route('spareparts.index')
+                    ->with('error', 'Gagal impor! Terdapat ' . count($failures) . ' kesalahan validasi.')
+                    ->with('import_errors', $errors);
+        } catch (\Exception $e) {
+            return redirect()->route('spareparts.index')->with('error', 'Import gagal: ' . $e->getMessage());
+        }
+    }
+
+    public function downloadTemplate()
+    {
+        $filename = 'template_import_sparepart_' . date('Ymd_His') . '.xlsx';
+        
+        // Gunakan facade Excel untuk mendownload file
+        return Excel::download(new SparepartsTemplateExport, $filename);
+    }
+
 }

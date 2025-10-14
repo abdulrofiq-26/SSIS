@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sparepart_images', function (Blueprint $table) {
+            $table->id(); // <--- BARIS KRITIS YANG HILANG DAN SUDAH DITAMBAHKAN
             // Foreign key ke tabel spareparts
             $table->foreignId('sparepart_id')
                 ->constrained('spareparts') // Pastikan menunjuk ke nama tabel Sparepart

@@ -137,12 +137,6 @@
                 {{-- Baris 5: Gambar Utama --}}
                 <div class="col-12 mb-3">
                     <label class="form-label">Galeri Gambar Sparepart</label>
-                    
-                    {{-- Tombol Custom untuk Membuka File Dialog --}}
-                    <button type="button" class="btn btn-outline-primary d-block w-100" id="btn-select-images">
-                        <i class="bx bx-image-add me-2"></i> Pilih Gambar Tambahan (Max 2MB per gambar)
-                    </button>
-                
                     {{-- Input File Tersembunyi --}}
                     <input type="file" 
                         class="form-control d-none @error('gambar_tambahan') is-invalid @enderror" 
@@ -160,6 +154,10 @@
                          style="min-height: 50px; display: flex; flex-wrap: wrap; gap: 10px; {{ old('gambar_tambahan') ? '' : 'display: none;' }}">
                         {{-- Pratinjau akan dimasukkan di sini oleh JavaScript --}}
                     </div>
+                    {{-- Tombol Custom untuk Membuka File Dialog --}}
+                    <button type="button" class="btn btn-outline-primary d-block w-100" id="btn-select-images">
+                        <i class="bx bx-image-add me-2"></i> Pilih Gambar Tambahan (Max 2MB per gambar)
+                    </button>
                 </div>
             </div>
             

@@ -6,12 +6,12 @@
 @section('title', 'Daftar Sparepart')
 
 @section('css')
-<link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
-<link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
-<link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-checkboxes-jquery/datatables.checkboxes.css') }}">
-<link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css') }}">
-<link rel="stylesheet" href="{{ asset('assets/vendor/sweetalert2.css') }}">
-<link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css')}}">
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-checkboxes-jquery/datatables.checkboxes.css')}}">
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css')}}">
+<link rel="stylesheet" href="{{asset('assets/vendor/sweetalert2.css')}}">
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
 @endsection
 
 @section('style')
@@ -53,18 +53,88 @@
                     <div class="col-12">
                         <div class="row">
                             <div class="col-12 text-md-end text-center pt-3 pt-md-0">
-                                 <a href="{{ route('spareparts.create') }}" class="btn btn-primary">
-                                            <span>
-                                                <i class="bx bx-plus me-sm-2"></i>
-                                                <span>Tambah Sparepart</span>
-                                            </span>
-                                        </a>
+                                
+                                {{-- ⭐ PERBAIKAN: GABUNGKAN DUA TOMBOL DALAM SATU DIV FLEKSIBEL ⭐ --}}
+                                <div class="d-flex justify-content-end gap-2">
+                                    
+                                    {{-- Tombol Import Excel --}}
+                                    <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#importModal">
+                                        <i class="bx bx-upload me-sm-2"></i> <span>Import</span>
+                                    </button>
+                                    
+                                    {{-- Tombol Tambah Sparepart --}}
+                                    <a href="{{ route('spareparts.create') }}" class="btn btn-primary">
+                                        <span>
+                                            <i class="bx bx-plus me-sm-2"></i>
+                                            <span>Tambah Sparepart</span>
+                                        </span>
+                                    </a>
+                                </div>
+                                {{-- ⭐ AKHIR PERBAIKAN ⭐ --}}
+
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+        
+        
+        {{-- Modal/Offcanvas Form Import (DIPOSISIKAN DI SINI UNTUK KETERBACAAN) --}}
+        <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="importModalLabel">Import Data Sparepart dari Excel</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    
+                    <div class="modal-body pb-0">
+                        <p class="text-muted">
+                            Untuk menghindari kesalahan format, silakan unduh template Excel resmi.
+                        </p>
+                        {{-- Tombol Download Template --}}
+                        <div class="mb-3 d-grid">
+                            <a href="{{ route('spareparts.template') }}" class="btn btn-outline-success">
+                                <i class="bx bx-download me-2"></i>Template Add Sparepart (.xlsx)
+                            </a>
+                        </div>
+                        <hr>
+                        
+                        <form action="{{ route('spareparts.import') }}" method="POST" enctype="multipart/form-data">
+                            @csrf
+                            <div class="mb-3">
+                                <label for="file" class="form-label">Pilih File Excel (.xlsx, .xls)</label>
+                                <input class="form-control" type="file" name="file" id="file" required accept=".xlsx, .xls">
+                            </div>
+                            <p class="text-muted small">Pastikan kolom header Excel Anda **cocok** dengan template yang diunduh.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-success">Import Data</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {{-- Akhir Modal Import --}}
+        
+        {{-- Tampilkan pesan ERROR dari Import --}}
+        @if (session('error'))
+            <div class="alert alert-danger alert-dismissible mx-3 mt-3" role="alert">
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                
+                {{-- Tampilkan detail error dari Import Class --}}
+                @if (session('import_errors'))
+                    <ul class="mt-2 mb-0">
+                        @foreach (session('import_errors') as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+        @endif
         
         {{-- Tampilkan pesan SUKSES --}}
         @if (session('success'))
@@ -100,29 +170,42 @@
                     <td>{{ $sparepart->jumlah_stok }} {{ $sparepart->jumlah_satuan }}</td>
                     <td>{{ $sparepart->lokasi_penyimpanan ?? '-' }}</td>
                     <td>
-                        @if ($sparepart->gambar_utama)
-                            {{-- Menggunakan asset('storage/') --}}
-                            <img src="{{ asset('storage/' . $sparepart->gambar_utama) }}" alt="{{ $sparepart->nama_barang }} Gambar" class="sparepart-img">
+                        @php
+                            // Ambil gambar pertama dari relasi images
+                            $mainImage = $sparepart->images->first();
+                        @endphp
+
+                        @if ($mainImage)
+                            <img src="{{ asset('storage/' . $mainImage->path) }}" alt="{{ $sparepart->nama_barang }} Gambar" class="sparepart-img">
                         @else
                             <span class="text-muted">Tidak ada Gambar</span>
                         @endif
                     </td>
                     <td>
-                        {{-- Tambahkan class d-flex dan gap-1 di sini --}}
                         <div class="d-flex gap-1">
                             
-                            {{-- Tombol Edit (Link ke halaman edit baru) --}}
+                            {{-- Tombol Edit --}}
                             <a href="{{ route('spareparts.edit', $sparepart->id) }}" class="btn btn-icon btn-sm btn-label-warning" title="Edit">
                                 <i class="bx bx-edit"></i>
                             </a>
-                            {{-- Tombol Hapus (Konfirmasi via SweetAlert) --}}
-                            <form action="{{ route('spareparts.destroy', $sparepart->id) }}" method="POST" class="d-inline delete-form">
+                            
+                            {{-- Tombol Hapus (Konfirmasi Browser) --}}
+                            <a href="#" class="btn btn-icon btn-sm btn-label-danger" title="Hapus" 
+                                onclick="event.preventDefault(); 
+                                         if(confirm('Apakah Anda yakin ingin menghapus sparepart ini?')) {
+                                             document.getElementById('delete-sparepart-{{ $sparepart->id }}').submit();
+                                         }">
+                                <i class="bx bx-trash"></i>
+                            </a>
+                            {{-- Form Tersembunyi untuk DELETE Method --}}
+                            <form id="delete-sparepart-{{ $sparepart->id }}" 
+                                action="{{ route('spareparts.destroy', $sparepart->id) }}" 
+                                method="POST" 
+                                style="display: none;">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="btn btn-icon btn-sm btn-label-danger delete-btn" title="Hapus">
-                                    <i class="bx bx-trash"></i>
-                                </button>
                             </form>
+                            {{-- Akhir Form --}}
                         </div>
                     </td>
                 </tr>
@@ -140,7 +223,6 @@
         
     </div>
 </div>
-
 @endsection
 
 @section('js')
@@ -155,42 +237,14 @@
 <script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
 
 <script>
+    // Hanya sisakan logika non-hapus yang Anda butuhkan
     document.addEventListener('DOMContentLoaded', function() {
-        // Logika untuk menampilkan modal create jika ada error validation
-        @if($errors->any())
-            // Periksa apakah error berasal dari form create (bisa diidentifikasi dengan adanya old input)
-            @if(old('kode_barang') || old('nama_barang')) // Contoh cek sederhana
-                var addModal = new bootstrap.Modal(document.getElementById('addSparepartModal'));
-                addModal.show();
-            @endif
-        @endif
         
-        // ===================================
-        // Logika Konfirmasi Hapus (SweetAlert)
-        // ===================================
-        document.querySelectorAll('.delete-form').forEach(form => {
-            
-            form.addEventListener('submit', function(e) {
-                e.preventDefault(); 
-                
-                const currentForm = e.target;
-                
-                Swal.fire({
-                    title: 'Apakah Anda yakin?',
-                    text: "Data sparepart ini akan dihapus secara permanen!", 
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Ya, Hapus!',
-                    cancelButtonText: 'Batal'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        currentForm.submit();
-                    }
-                });
-            });
-        });
+        // Logika untuk menampilkan modal create jika ada error validation (dibiarkan)
+        @if($errors->any() && (old('kode_barang') || old('nama_barang')))
+            var addModal = new bootstrap.Modal(document.getElementById('addSparepartModal'));
+            addModal.show();
+        @endif
         
         // Inisialisasi Select2 jika digunakan di modal
         $('.select2').select2({

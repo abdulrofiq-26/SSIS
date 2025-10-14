@@ -39,7 +39,9 @@ Route::middleware('auth')->group(function () {
 
 Route::get('log-viewers', [\Rap2hpoutre\LaravelLogViewer\LogViewerController::class, 'index'])->middleware(['can:log-viewers.read']);
 
+// Route Group Setting (Users, Roles, Permissions)
 Route::group(['prefix' => 'setting','middleware' => ['auth']],function () {
+    // ... (Route Users, Roles, Permissions tetap sama) ...
     Route::group(['prefix' => 'manage_account'], function () {
         Route::group(['prefix' => 'users'], function () { //route to manage users
             Route::any('/', [UserController::class, 'index'])->name('users.index');
@@ -68,13 +70,25 @@ Route::group(['prefix' => 'setting','middleware' => ['auth']],function () {
 Route::get('/search', [SearchController::class, 'index'])->name('search.index');
 Route::get('/search/results', [SearchController::class, 'performSearch'])->name('search.results');
 
-//Route CRUD Sparepart
-Route::resource('spareparts', SparepartController::class);
+// ROUTE GROUP UNTUK MASTER DATA (Brands & Spareparts)
+Route::group(['prefix' => 'master_data','middleware' => ['auth']],function () {
+    
+    // CRUD Brand
+    // Route DataTables
+    Route::get('brands/data', [BrandController::class, 'data'])->name('brands.data'); 
+    // Route Delete AJAX
+    Route::delete('brands/delete', [BrandController::class, 'delete'])->name('brands.delete');
+    // Route Resource (brands.index, brands.store, brands.edit, brands.update)
+    Route::resource('brands', BrandController::class)->only(['index', 'store', 'edit', 'update']);
+    // Route Impor/Template
+    Route::get('brands/download-template', [BrandController::class, 'downloadTemplate'])->name('brands.template');
+    Route::post('brands/import', [BrandController::class, 'import'])->name('brands.import');
 
-// CRUD Brand
-// Kita hanya menggunakan index, create, store, edit, update, destroy
-Route::resource('brands', BrandController::class)->only(['index', 'store', 'edit', 'update', 'destroy']);
 
-// CRUD Sparepart
-Route::resource('spareparts', SparepartController::class);
-// Ini secara otomatis mencakup: index, create, store, show, edit, update, destroy
+    // CRUD Sparepart (DIPASTIKAN DI SINI UNTUK KONSISTENSI)
+    Route::get('spareparts/download-template', [SparepartController::class, 'downloadTemplate'])->name('spareparts.template');
+    // Route Resource Sparepart (akan memiliki prefix: master_data/spareparts/...)
+    Route::resource('spareparts', SparepartController::class);
+    Route::delete('/sparepart-images/{image}', [SparepartController::class, 'deleteImage'])->name('sparepart.image.delete');
+    Route::post('spareparts/import', [SparepartController::class, 'import'])->name('spareparts.import');
+});
