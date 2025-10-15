@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SparepartController;
 use App\Http\Controllers\BrandController;
+use Illuminate\Support\Facades\Storage;
 
 /*
 |--------------------------------------------------------------------------
@@ -69,6 +70,21 @@ Route::group(['prefix' => 'setting','middleware' => ['auth']],function () {
 // Route search
 Route::get('/search', [SearchController::class, 'index'])->name('search.index');
 Route::get('/search/results', [SearchController::class, 'performSearch'])->name('search.results');
+// **Rute POST untuk Pencarian Gambar**
+Route::post('/search/image', [SearchController::class, 'performImageSearch'])->name('search.image');
+Route::get('/test-storage', function () {
+    try {
+        // Perintah ini secara paksa mencoba menulis file ke disk 'local'
+        Storage::disk('local')->put('test.txt', 'Halo Dunia, file ini berhasil dibuat.');
+
+        // Jika berhasil, cek file di folder storage/app/test.txt
+        return 'TES BERHASIL: File `test.txt` berhasil dibuat di folder `storage/app/`.';
+
+    } catch (\Exception $e) {
+        // Jika gagal, tampilkan errornya
+        return 'TES GAGAL: ' . $e->getMessage();
+    }
+});
 
 // ROUTE GROUP UNTUK MASTER DATA (Brands & Spareparts)
 Route::group(['prefix' => 'master_data','middleware' => ['auth']],function () {

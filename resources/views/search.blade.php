@@ -9,23 +9,18 @@
   <meta name="keywords" content="">
 
   <!-- Favicons -->
-  <link href="{{asset('assets/img/favicon.png')}}" rel="icon">
-  <link href="{{asset('assets/img/apple-touch-icon.png')}}" rel="apple-touch-icon">
-
-  <!-- Fonts -->
+  <link href="{{ asset('assets/img/favicon.png') }}" rel="icon">
+  <link href="{{ asset('assets/img/apple-touch-icon.png') }}" rel="apple-touch-icon">
   <link href="https://fonts.googleapis.com" rel="preconnect">
   <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Nunito:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
-
-  <!-- Vendor CSS Files -->
-  <link href="{{asset('assets/vendor/bootstrap/css/bootstrap.min.css')}}" rel="stylesheet">
-  <link href="{{asset('assets/vendor/bootstrap-icons/bootstrap-icons.css')}}" rel="stylesheet">
-  <link href="{{asset('assets/vendor/aos/aos.css')}}" rel="stylesheet">
-  <link href="{{asset('assets/vendor/glightbox/css/glightbox.min.css')}}" rel="stylesheet">
-  <link href="{{asset('assets/vendor/swiper/swiper-bundle.min.css')}}" rel="stylesheet">
-
-  <!-- Main CSS File -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&family=Nunito:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+  <link href="{{ asset('assets/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ asset('assets/vendor/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
+  <link href="{{ asset('assets/vendor/aos/aos.css') }}" rel="stylesheet">
+  <link href="{{ asset('assets/vendor/glightbox/css/glightbox.min.css') }}" rel="stylesheet">
+  <link href="{{ asset('assets/vendor/swiper/swiper-bundle.min.css') }}" rel="stylesheet">
   <link href="{{ asset('assets/css/main.css') }}" rel="stylesheet">
+
   <!-- =======================================================
   * Template Name: FlexStart
   * Template URL: https://bootstrapmade.com/flexstart-bootstrap-startup-template/
@@ -53,7 +48,7 @@
 
   <main class="main"> 
     <!-- Features Section -->
-    <section id="features" class="features section">
+    <section id="features" class="features section" style="padding-top: 100px;">
       <!-- Section Title -->
       <div class="container section-title" data-aos="fade-up">
         <h2>Features</h2>
@@ -109,12 +104,11 @@
                                                         class="rounded-circle" 
                                                         style="width: 50px; height: 50px; object-fit: contain; border: 1px solid #ddd;">
                                                         
-                                                @else
-                                                    {{-- 3. Keduanya TIDAK ADA: Tampilkan ikon default --}}
-                                                    <i class="fas fa-tools fa-2x text-info"></i>
-                                                @endif
+                                                        @else
+                                                            {{-- 3. Keduanya TIDAK ADA: Tampilkan ikon default Bootstrap --}}
+                                                            <i class="bi bi-gear-fill fa-2x text-info"></i>
+                                                        @endif
                                             </div>
-                                            
                                             {{-- Kolom Tengah: Detail Barang --}}
                                             <div class="flex-grow-1">
                                                 <p class="mb-1 fw-bold text-truncate" style="max-width: 90%;">
@@ -151,11 +145,6 @@
                                                 <div class="me-3">
                                                     {{-- **MODIFIKASI BAGIAN INI UNTUK LOGO BRAND** --}}
                                                     @if ($brand->logo_brand)
-                                                        {{-- Asumsi logo disimpan di storage/app/public/logos atau semacamnya --}}
-                                                        {{-- Jika logo_brand sudah berupa URL lengkap: --}}
-                                                        {{-- <img src="{{ $brand->logo_brand }}" alt="{{ $brand->nama_brand }}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: contain; border: 1px solid #ddd;"> --}}
-                                                        
-                                                        {{-- Jika logo_brand hanya nama file/path relatif dari storage/app/public: --}}
                                                         <img src="{{ asset('storage/' . $brand->logo_brand) }}" alt="{{ $brand->nama_brand }}" class="rounded-circle" style="width: 40px; height: 40px; object-fit: contain; border: 1px solid #ddd;">
                                                     @else
                                                         <i class="fas fa-tag fa-2x text-warning"></i>
@@ -175,16 +164,12 @@
                                         @endforeach
                                     </ul>
                                 @endif
-                    
-                                ---
-                    
                                 {{-- 3. Tampilkan Pesan Jika Tidak Ada Hasil --}}
-                                @if($results['spareparts']->isEmpty() && $results['brands']->isEmpty())
+                                @if(isset($results) && !empty($query))
                                     <div class="alert alert-warning text-center mt-5" role="alert">
                                         <i class="fas fa-exclamation-triangle me-2"></i> Maaf, tidak ditemukan hasil untuk "**{{ $query }}**". Coba kata kunci lain.
                                     </div>
                                 @endif
-                    
                             {{-- Jika tidak ada query atau results (halaman awal) --}}
                             @else
                                 <div class="alert alert-info text-center mt-5" role="alert">
@@ -199,7 +184,16 @@
                         <span class="mx-3 text-muted fw-light">OR</span>
                         <hr class="flex-grow-1">
                     </div>
-                    
+                    {{-- Letakkan ini di atas form pencarian gambar --}}
+                    @if ($errors->any())
+                    <div class="alert alert-danger text-center mb-3" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        {{-- Kode ini akan menampilkan SEMUA pesan error yang ada --}}
+                        @foreach ($errors->all() as $error)
+                            <span>{{ $error }}</span>
+                        @endforeach
+                    </div>
+                    @endif
                     {{-- **FORM PENCARIAN GAMBAR BARU** --}}
                     <form action="{{ route('search.image') }}" method="POST" enctype="multipart/form-data" id="image-search-form">
                         @csrf
@@ -220,7 +214,7 @@
                                     <span class="fw-semibold">Upload Image</span>
                                 </label>
                                 {{-- Input File Utama. NAMA HARUS 'image' sesuai di Controller --}}
-                                <input type="file" name="image" id="upload-image-input" class="d-none" accept="image/*">
+                                <input type="file" id="upload-image-input" class="d-none" accept="image/*">
                             </div>
                     
                             {{-- Tombol Gunakan Kamera --}}
@@ -230,40 +224,44 @@
                                     <span class="fw-semibold">Use Camera</span>
                                 </label>
                                 {{-- Input file terpisah untuk kamera (bisa digabungkan, tapi ini lebih spesifik) --}}
-                                <input type="file" name="image" id="camera-input" class="d-none" accept="image/*" capture="environment">
+                                <input type="file" id="camera-input" class="d-none" accept="image/*" capture="environment">
                             </div>
                         </div>
                     </form>
                     
-{{-- **SCRIPT JAVASCRIPT untuk Otomatis Submit Form** --}}
+<a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+    <script src="{{ asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ asset('assets/vendor/aos/aos.js') }}"></script>
+    <script src="{{ asset('assets/vendor/glightbox/js/glightbox.min.js') }}"></script>
+    <script src="{{ asset('assets/vendor/swiper/swiper-bundle.min.js') }}"></script>
+    <script src="{{ asset('assets/js/main-copy.js') }}"></script> {{-- Sesuaikan nama file ini --}}
+                    
+
+{{-- **SCRIPT JAVASCRIPT untuk Otomatis Submit Form (Disarankan di sini)** --}}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const uploadInput = document.getElementById('upload-image-input');
         const cameraInput = document.getElementById('camera-input');
         const form = document.getElementById('image-search-form');
 
-        // Fungsi yang akan dipanggil saat input file berubah
         function handleFileSelection(event) {
             if (event.target.files.length > 0) {
-                // Hapus input yang tidak digunakan dari form sebelum submit 
-                // agar hanya satu file 'image' yang terkirim
-                if (event.target.id === 'upload-image-input') {
-                    cameraInput.name = 'temp'; // Ganti nama agar tidak terkirim
-                } else if (event.target.id === 'camera-input') {
-                    uploadInput.name = 'temp'; // Ganti nama agar tidak terkirim
-                }
+                // KOREKSI UTAMA: Reset nama agar hanya input yang dipilih yang mengirim file 'image'
+                uploadInput.name = '';
+                cameraInput.name = '';
                 
-                // Submit form
+                // Beri nama 'image' pada input yang dipilih
+                event.target.name = 'image'; 
+                
                 form.submit();
             }
         }
 
-        // Tambahkan event listener ke kedua input
         uploadInput.addEventListener('change', handleFileSelection);
         cameraInput.addEventListener('change', handleFileSelection);
     });
 </script>
 
 </body>
-
 </html>

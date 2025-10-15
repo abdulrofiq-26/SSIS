@@ -15,7 +15,14 @@ class SearchController extends Controller
 {
     public function index() 
     {
-        return view('search'); 
+        // KOREKSI: Inisialisasi variabel untuk menghindari error Undefined Variable di Blade
+        return view('search', [
+            'results' => [
+                'brands' => collect(), 
+                'spareparts' => collect()
+            ],
+            'query' => null // Setel null atau string kosong
+        ]); 
     }
 
     /**
@@ -69,7 +76,11 @@ class SearchController extends Controller
         ]);
         
         // 2. Simpan Gambar Query Sementara
-        $queryPath = $request->file('image')->store('temp_query_images');
+        $file = $request->file('image');
+        $queryPath = Storage::disk('local')->put('temp_query_images', $file);
+
+        // KOREKSI UTAMA: TAMBAHKAN BARIS INI
+        // Membuat path absolut ke file yang baru disimpan
         $queryImagePath = storage_path('app/' . $queryPath);
 
         // 3. Siapkan Metadata Vektor Produk untuk Python
@@ -91,9 +102,9 @@ class SearchController extends Controller
 
         // 4. Jalankan Skrip Python Pencarian
         $command = [
-            'python3',
+            base_path('venv/Scripts/python.exe'), // <-- GANTI MENJADI INI,
             base_path('scripts/image_search.py'),
-            $queryImagePath,
+            $queryImagePath, // Sekarang variabel ini sudah ada
             $metadataJsonPath
         ];
         
@@ -111,7 +122,7 @@ class SearchController extends Controller
         } else {
             // Jika Python error, log error dan redirect
             Log::error("Python Search Failed. Path: {$queryImagePath}. Output: " . $process->getErrorOutput());
-            Storage::delete($queryPath);
+            Storage::disk('local')->delete($queryPath); // Gunakan disk local untuk menghapus
             if (file_exists($metadataJsonPath)) unlink($metadataJsonPath);
             return redirect()->route('search.index')->withErrors(['image_search' => 'Gagal memproses gambar. Pastikan Python/OpenCV sudah terinstal dan data sudah di-index.']);
         }
@@ -120,14 +131,18 @@ class SearchController extends Controller
         $products = collect();
         if (!empty($similarProductIds)) {
             $products = Sparepart::with(['brand', 'category', 'images'])
-                       ->whereIn('id', $similarProductIds)
-                       ->orderByRaw("FIELD(id, " . implode(',', $similarProductIds) . ")")
-                       ->get();
+                                ->whereIn('id', $similarProductIds)
+                                ->orderByRaw("FIELD(id, " . implode(',', $similarProductIds) . ")")
+                                ->get();
         }
         
-        // 7. Bersihkan file sementara
-        Storage::delete($queryPath);
-        if (file_exists($metadataJsonPath)) unlink($metadataJsonPath);
+        // Hapus file Query Image yang diupload
+        Storage::disk('local')->delete($queryPath); // Gunakan disk local untuk menghapus
+        
+        // Hapus file JSON metadata (perlu cek keberadaan karena unlink)
+        if (file_exists($metadataJsonPath)) {
+            unlink($metadataJsonPath);
+        }
         
         // 8. Tampilkan Hasil
         $results = [
@@ -141,4 +156,6 @@ class SearchController extends Controller
             'is_image_search' => true 
         ]);
     }
+
+    
 }
