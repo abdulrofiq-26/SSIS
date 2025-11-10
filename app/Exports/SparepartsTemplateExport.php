@@ -14,7 +14,7 @@ class SparepartsTemplateExport implements FromArray, WithHeadings
     {
         // Baris ini kosong, hanya sebagai contoh template
         return [
-            ['KB001', 'Baut Mesin', 'Toyota', 'Fast Moving', 50, 'Rack A-01', 'pcs'],
+            ['K1B001', 'Baut Mesin', 'Denso', 'Elektrik', 50, 'Rack A-01', 'pcs'],
         ];
     }
 

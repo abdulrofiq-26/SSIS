@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\SparepartsImport;
 use App\Exports\SparepartsTemplateExport;
+use Yajra\DataTables\Facades\DataTables;
 
 // KOREKSI: Tambahkan 'use' statement yang dibutuhkan untuk indexing
 use Symfony\Component\Process\Process;
@@ -25,10 +26,54 @@ class SparepartController extends Controller
      */
     public function index()
     {
-        $spareparts = Sparepart::with(['brand', 'category', 'images'])->paginate(10); 
-        $brands = Brand::orderBy('nama_brand')->get(); 
-        $categories = Category::orderBy('nama_kategori')->get();
-        return view('spareparts.index', compact('spareparts', 'brands', 'categories'));
+        // ⭐ DIUBAH: Tidak perlu kirim data, DataTables yang akan ambil
+        return view('spareparts.index');
+    }
+
+    /**
+     * Data untuk Datatables (Server-Side Processing).
+     */
+    public function data(Request $request)
+    {
+        // Join dengan brand dan category untuk searching/sorting
+        $query = Sparepart::select('spareparts.*', 'brands.nama_brand', 'categories.nama_kategori')
+            ->leftJoin('brands', 'spareparts.brand_id', '=', 'brands.id')
+            ->leftJoin('categories', 'spareparts.category_id', '=', 'categories.id')
+            ->with('images'); // Eager load relasi images
+
+        return DataTables::of($query)
+            // Filter
+            ->filter(function ($query) use ($request) {
+                if ($request->filled('search')) {
+                    $search = $request->search['value'];
+                    $query->where(function($q) use ($search) {
+                        $q->where('spareparts.kode_barang', 'like', "%{$search}%")
+                          ->orWhere('spareparts.nama_barang', 'like', "%{$search}%")
+                          ->orWhere('brands.nama_brand', 'like', "%{$search}%")
+                          ->orWhere('categories.nama_kategori', 'like', "%{$search}%");
+                    });
+                }
+            })
+            // Kolom IDD (untuk ID unik di JS)
+            ->addColumn('idd', function ($sparepart) {
+                return $sparepart->id;
+            })
+            // Kolom Stok (Gabungan)
+            ->addColumn('stok', function ($sparepart) {
+                return $sparepart->jumlah_stok . ' ' . $sparepart->jumlah_satuan;
+            })
+            // Kolom Gambar (Hanya ambil path gambar pertama)
+            ->addColumn('gambar', function ($sparepart) {
+                $mainImage = $sparepart->images->first();
+                return $mainImage ? $mainImage->path : null;
+            })
+            // Kolom Aksi (Placeholder)
+            ->addColumn('action', function ($sparepart) {
+                return ''; 
+            })
+            // Tentukan kolom mana yang bukan dari DB / perlu di-render
+            ->rawColumns(['idd', 'action', 'gambar']) 
+            ->make(true);
     }
 
     public function create()
@@ -62,8 +107,9 @@ class SparepartController extends Controller
         if ($request->hasFile('gambar_tambahan')) {
             $this->saveImages($request->file('gambar_tambahan'), $sparepart->id);
 
-            // KOREKSI: Panggil fungsi indexing setelah gambar disimpan
-            // Kita ambil gambar pertama sebagai "gambar utama" untuk diindeks
+            // KOREKSI UTAMA: Segarkan model untuk memuat relasi yang baru disimpan
+            $sparepart->refresh();
+
             $mainImage = $sparepart->images()->orderBy('order', 'asc')->first();
             if ($mainImage) {
                 $this->_runVectorExtraction($sparepart, $mainImage->path);
@@ -122,9 +168,9 @@ class SparepartController extends Controller
         if ($request->hasFile('gambar_tambahan')) {
             $this->saveImages($request->file('gambar_tambahan'), $sparepart->id);
 
-            // KOREKSI: Panggil ulang fungsi indexing jika ada gambar baru
-            // Ini penting agar "sidik jari visual" sparepart selalu yang terbaru
-            $sparepart->refresh(); // Muat ulang data sparepart beserta gambar barunya
+            // KOREKSI UTAMA: Segarkan model di sini juga
+            $sparepart->refresh();
+            
             $mainImage = $sparepart->images()->orderBy('order', 'asc')->first();
             if ($mainImage) {
                 $this->_runVectorExtraction($sparepart, $mainImage->path);
@@ -151,20 +197,41 @@ class SparepartController extends Controller
     }
 
     /**
-     * Menghapus data sparepart.
-     */
-    public function destroy(Sparepart $sparepart)
+    * Menghapus data sparepart (Via AJAX dari SweetAlert).
+    */
+    public function delete(Request $request)
     {
-        // KOREKSI: Hapus juga file vektor .pkl saat sparepart dihapus
-        if ($sparepart->vector_path && Storage::disk('public')->exists($sparepart->vector_path)) {
-            Storage::disk('public')->delete($sparepart->vector_path);
+        $sparepart = Sparepart::find($request->id);
+
+        if (!$sparepart) {
+            return response()->json(['success' => false, 'message' => 'Sparepart tidak ditemukan.'], 404);
         }
 
-        $sparepart->images->each(function ($image) {
-            Storage::disk('public')->delete($image->path);
-        });
-        $sparepart->delete();
-        return redirect()->route('spareparts.index')->with('success', 'Sparepart berhasil dihapus!');
+        try {
+            // Hapus file vektor .pkl
+            if ($sparepart->vector_path && Storage::disk('public')->exists($sparepart->vector_path)) {
+                Storage::disk('public')->delete($sparepart->vector_path);
+            }
+
+            // Hapus semua gambar terkait
+            $sparepart->images->each(function ($image) {
+                Storage::disk('public')->delete($image->path);
+                // Hapus record gambar (jika model SparepartImage tidak di-cascade delete)
+                $image->delete();
+            });
+
+            // Hapus record sparepart
+            $sparepart->delete();
+
+            return response()->json(['success' => true, 'message' => 'Sparepart berhasil dihapus.'], 200);
+
+        } catch (\Exception $e) {
+            // Tangkap jika ada error relasi (jika sparepart dipakai di tabel lain)
+            if (str_contains($e->getMessage(), 'SQLSTATE[23000]')) {
+                return response()->json(['success' => false, 'message' => 'Gagal menghapus: Sparepart ini mungkin digunakan oleh data lain.'], 422);
+            }
+            return response()->json(['success' => false, 'message' => 'Gagal menghapus sparepart: ' . $e->getMessage()], 500);
+        }
     }
 
     public function import(Request $request)
@@ -200,31 +267,33 @@ class SparepartController extends Controller
      */
     private function _runVectorExtraction(Sparepart $sparepart, string $imagePath)
     {
+        // Path absolut ke gambar yang baru di-upload
         $absoluteImagePath = storage_path('app/public/' . $imagePath);
-        $vectorFileName = 'sparepart_' . $sparepart->id . '_' . time() . '.pkl';
-        $outputVectorPath = storage_path('app/public/vectors/' . $vectorFileName);
 
         $command = [
-            base_path('venv/Scripts/python.exe'),
-            base_path('scripts/extract_vector.py'),
+            base_path('venv-tf/Scripts/python.exe'), // <-- Alamat BARU yang benar
+            base_path('scripts/index_vector.py'),
             $absoluteImagePath,
-            $outputVectorPath,
+            $sparepart->id,
         ];
 
         $process = new Process($command);
+        $process->setTimeout(300);
+        // KOREKSI: Set environment variable USERPROFILE sebelum menjalankan
+        $process->setEnv(['USERPROFILE' => storage_path()]); // Arahkan ke folder storage
         $process->run();
 
-        if ($process->isSuccessful()) {
-            // Hapus file vektor lama jika ada sebelum menyimpan yang baru
-            if ($sparepart->vector_path && Storage::disk('public')->exists($sparepart->vector_path)) {
-                Storage::disk('public')->delete($sparepart->vector_path);
-            }
-            
-            $sparepart->is_indexed = true;
-            $sparepart->vector_path = 'vectors/' . $vectorFileName; // Simpan path relatif
-            $sparepart->save();
+        // Catat hasilnya di log untuk debugging
+        if (!$process->isSuccessful()) {
+            Log::error(
+                'Vector Indexing Failed for sparepart ID ' . $sparepart->id .
+                ': ' . $process->getErrorOutput()
+            );
         } else {
-            Log::error('Vector Extraction Failed for sparepart ID ' . $sparepart->id . ': ' . $process->getErrorOutput());
+            Log::info(
+                'Vector Indexing Success for sparepart ID ' . $sparepart->id .
+                ': ' . $process->getOutput()
+            );
         }
     }
 }

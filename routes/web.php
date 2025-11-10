@@ -103,8 +103,14 @@ Route::group(['prefix' => 'master_data','middleware' => ['auth']],function () {
 
     // CRUD Sparepart (DIPASTIKAN DI SINI UNTUK KONSISTENSI)
     Route::get('spareparts/download-template', [SparepartController::class, 'downloadTemplate'])->name('spareparts.template');
-    // Route Resource Sparepart (akan memiliki prefix: master_data/spareparts/...)
-    Route::resource('spareparts', SparepartController::class);
-    Route::delete('/sparepart-images/{image}', [SparepartController::class, 'deleteImage'])->name('sparepart.image.delete');
     Route::post('spareparts/import', [SparepartController::class, 'import'])->name('spareparts.import');
+    Route::delete('/sparepart-images/{image}', [SparepartController::class, 'deleteImage'])->name('sparepart.image.delete');
+
+    // ⭐ TAMBAHKAN DUA ROUTE INI (Meniru Brand)
+    // 1. Route untuk DataTables Server-Side
+    Route::get('spareparts/data', [SparepartController::class, 'data'])->name('spareparts.data');
+    // 2. Route untuk SweetAlert AJAX Delete
+    Route::delete('spareparts/delete', [SparepartController::class, 'delete'])->name('spareparts.delete');
+    // Route Resource Sparepart (akan memiliki prefix: master_data/spareparts/...)
+    Route::resource('spareparts', SparepartController::class)->except(['destroy']);
 });

@@ -70,89 +70,61 @@ class SearchController extends Controller
      */
     public function performImageSearch(Request $request)
     {
-        // 1. Validasi Gambar Query
+        // 1. Validasi
         $request->validate([
-            'image' => 'required|image|max:5120', // Maksimal 5MB
+            'image' => 'required|image|max:5120',
         ]);
         
-        // 2. Simpan Gambar Query Sementara
+        // 2. Simpan gambar query sementara
         $file = $request->file('image');
-        $queryPath = Storage::disk('local')->put('temp_query_images', $file);
-
-        // KOREKSI UTAMA: TAMBAHKAN BARIS INI
-        // Membuat path absolut ke file yang baru disimpan
+        $queryPath = $file->store('temp_query_images', 'local'); // Simpan di disk local
         $queryImagePath = storage_path('app/' . $queryPath);
 
-        // 3. Siapkan Metadata Vektor Produk untuk Python
-        // Ambil hanya produk yang sudah di-index
-        $indexedProducts = Sparepart::where('is_indexed', true)->get(['id', 'vector_path']);
-        
-        $metadata = $indexedProducts->map(function ($product) {
-            return [
-                'id' => $product->id,
-                // Pastikan path ini benar-benar mengarah ke file .pkl
-                'vector_path' => storage_path('app/public/' . $product->vector_path), 
-            ];
-        })->toArray();
-
-        // Simpan metadata ke file JSON sementara
-        $timestamp = time();
-        $metadataJsonPath = storage_path("app/temp_query_metadata_{$timestamp}.json");
-        file_put_contents($metadataJsonPath, json_encode($metadata));
-
-        // 4. Jalankan Skrip Python Pencarian
+        // 3. Jalankan Skrip Python Pencarian
         $command = [
-            base_path('venv/Scripts/python.exe'), // <-- GANTI MENJADI INI,
-            base_path('scripts/image_search.py'),
-            $queryImagePath, // Sekarang variabel ini sudah ada
-            $metadataJsonPath
+            base_path('venv-tf/Scripts/python.exe'), // <-- Alamat BARU yang benar
+            base_path('scripts/search_vector.py'),
+            $queryImagePath,
         ];
         
         $process = new Process($command);
-        $process->setTimeout(60); 
+        $process->setTimeout(300);
+        // KOREKSI: Set environment variable USERPROFILE sebelum menjalankan
+        $process->setEnv(['USERPROFILE' => storage_path()]); // Arahkan ke folder storage
         $process->run();
 
-        // 5. Proses Hasil
-        $similarProductIds = [];
-        $queryDisplay = "Pencarian Gambar"; // Label untuk View
+        // Hapus gambar query sementara setelah digunakan
+        Storage::disk('local')->delete($queryPath);
 
-        if ($process->isSuccessful()) {
-            $output = $process->getOutput();
-            $similarProductIds = json_decode(trim($output), true) ?? [];
-        } else {
-            // Jika Python error, log error dan redirect
-            Log::error("Python Search Failed. Path: {$queryImagePath}. Output: " . $process->getErrorOutput());
-            Storage::disk('local')->delete($queryPath); // Gunakan disk local untuk menghapus
-            if (file_exists($metadataJsonPath)) unlink($metadataJsonPath);
-            return redirect()->route('search.index')->withErrors(['image_search' => 'Gagal memproses gambar. Pastikan Python/OpenCV sudah terinstal dan data sudah di-index.']);
+        // 4. Proses Hasil
+        if (!$process->isSuccessful()) {
+            Log::error("Python Search Failed: " . $process->getErrorOutput());
+            return redirect()->route('search.index')->withErrors(['image_search' => 'Gagal memproses gambar. Terjadi kesalahan pada server.']);
         }
 
-        // 6. Ambil Produk dari DB (dengan mempertahankan urutan kemiripan)
+        $similarProductIds = json_decode(trim($process->getOutput()), true) ?? [];
+        
+        // Konversi ID dari string ke integer jika perlu
+        $similarProductIds = array_map('intval', $similarProductIds);
+
         $products = collect();
         if (!empty($similarProductIds)) {
             $products = Sparepart::with(['brand', 'category', 'images'])
                                 ->whereIn('id', $similarProductIds)
+                                // Urutkan berdasarkan urutan dari ChromaDB
                                 ->orderByRaw("FIELD(id, " . implode(',', $similarProductIds) . ")")
                                 ->get();
         }
         
-        // Hapus file Query Image yang diupload
-        Storage::disk('local')->delete($queryPath); // Gunakan disk local untuk menghapus
-        
-        // Hapus file JSON metadata (perlu cek keberadaan karena unlink)
-        if (file_exists($metadataJsonPath)) {
-            unlink($metadataJsonPath);
-        }
-        
-        // 8. Tampilkan Hasil
+        // 5. Tampilkan Hasil
         $results = [
-            'brands' => collect(), // Kosongkan, karena pencarian gambar hanya fokus ke sparepart
+            'brands' => collect(),
             'spareparts' => $products,
         ];
 
         return view('search', [
             'results' => $results,
-            'query' => $queryDisplay,
+            'query' => "Pencarian Gambar",
             'is_image_search' => true 
         ]);
     }
