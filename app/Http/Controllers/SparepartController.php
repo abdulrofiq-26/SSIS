@@ -15,8 +15,8 @@ use App\Imports\SparepartsImport;
 use App\Exports\SparepartsTemplateExport;
 use Yajra\DataTables\Facades\DataTables;
 
-// KOREKSI: Tambahkan 'use' statement yang dibutuhkan untuk indexing
-use Symfony\Component\Process\Process;
+use App\Jobs\IndexSparepartVector;
+use App\Services\ResnetServiceClient;
 use Illuminate\Support\Facades\Log;
 
 class SparepartController extends Controller
@@ -67,12 +67,16 @@ class SparepartController extends Controller
                 $mainImage = $sparepart->images->first();
                 return $mainImage ? $mainImage->path : null;
             })
+            // REK 6: Kolom status indexing vektor (tampil ke user, tidak silent fail)
+            ->addColumn('indexed', function ($sparepart) {
+                return $sparepart->is_indexed ? 1 : 0;
+            })
             // Kolom Aksi (Placeholder)
             ->addColumn('action', function ($sparepart) {
-                return ''; 
+                return '';
             })
             // Tentukan kolom mana yang bukan dari DB / perlu di-render
-            ->rawColumns(['idd', 'action', 'gambar']) 
+            ->rawColumns(['idd', 'action', 'gambar', 'indexed'])
             ->make(true);
     }
 
@@ -107,16 +111,16 @@ class SparepartController extends Controller
         if ($request->hasFile('gambar_tambahan')) {
             $this->saveImages($request->file('gambar_tambahan'), $sparepart->id);
 
-            // KOREKSI UTAMA: Segarkan model untuk memuat relasi yang baru disimpan
             $sparepart->refresh();
 
             $mainImage = $sparepart->images()->orderBy('order', 'asc')->first();
             if ($mainImage) {
-                $this->_runVectorExtraction($sparepart, $mainImage->path);
+                // REK 1: Indexing dijalankan di BACKGROUND (queue), TIDAK memblokir request.
+                IndexSparepartVector::dispatch($sparepart->id, $mainImage->path);
             }
         }
 
-        return redirect()->route('spareparts.index')->with('success', 'Sparepart berhasil ditambahkan!');
+        return redirect()->route('spareparts.index')->with('success', 'Sparepart berhasil ditambahkan! Gambar sedang diproses untuk pencarian visual.');
     }
 
     protected function saveImages(array $files, int $sparepartId)
@@ -168,12 +172,12 @@ class SparepartController extends Controller
         if ($request->hasFile('gambar_tambahan')) {
             $this->saveImages($request->file('gambar_tambahan'), $sparepart->id);
 
-            // KOREKSI UTAMA: Segarkan model di sini juga
             $sparepart->refresh();
-            
+
             $mainImage = $sparepart->images()->orderBy('order', 'asc')->first();
             if ($mainImage) {
-                $this->_runVectorExtraction($sparepart, $mainImage->path);
+                // REK 1: Indexing di background (queue), tidak memblokir request.
+                IndexSparepartVector::dispatch($sparepart->id, $mainImage->path);
             }
         }
         
@@ -186,10 +190,37 @@ class SparepartController extends Controller
     public function deleteImage(SparepartImage $image): JsonResponse
     {
         try {
+            $sparepartId = $image->sparepart_id;
+            $isMainImage = $image->sparepart
+                && $image->sparepart->images()->orderBy('order', 'asc')->first()?->id === $image->id;
+
             if (Storage::disk('public')->exists($image->path)) {
                 Storage::disk('public')->delete($image->path);
             }
             $image->delete();
+
+            // REK 4 & 6: Sinkronkan ulang vektor bila gambar utama dihapus.
+            $sparepart = Sparepart::find($sparepartId);
+            if ($sparepart) {
+                $nextMainImage = $sparepart->images()->orderBy('order', 'asc')->first();
+
+                if ($isMainImage) {
+                    if ($nextMainImage) {
+                        // Masih ada gambar lain -> index ulang gambar utama yang baru.
+                        $sparepart->update(['is_indexed' => false]);
+                        IndexSparepartVector::dispatch($sparepart->id, $nextMainImage->path);
+                    } else {
+                        // Tidak ada gambar tersisa -> hapus vektor lama dari ChromaDB.
+                        try {
+                            app(ResnetServiceClient::class)->deleteVector($sparepart->id);
+                        } catch (\Throwable $e) {
+                            Log::warning('Gagal menghapus vektor ChromaDB (deleteImage) #' . $sparepart->id . ': ' . $e->getMessage());
+                        }
+                        $sparepart->update(['is_indexed' => false, 'vector_path' => null]);
+                    }
+                }
+            }
+
             return response()->json(['success' => true, 'message' => 'Gambar berhasil dihapus.', 'imageId' => $image->id]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Gagal menghapus gambar: ' . $e->getMessage()], 500);
@@ -208,7 +239,14 @@ class SparepartController extends Controller
         }
 
         try {
-            // Hapus file vektor .pkl
+            // REK 4: Hapus vektor terkait dari ChromaDB via Python service.
+            try {
+                app(ResnetServiceClient::class)->deleteVector($sparepart->id);
+            } catch (\Throwable $e) {
+                Log::warning('Gagal menghapus vektor ChromaDB untuk sparepart #' . $sparepart->id . ': ' . $e->getMessage());
+            }
+
+            // Hapus file vektor .pkl (legacy) bila ada
             if ($sparepart->vector_path && Storage::disk('public')->exists($sparepart->vector_path)) {
                 Storage::disk('public')->delete($sparepart->vector_path);
             }
@@ -261,39 +299,8 @@ class SparepartController extends Controller
         return Excel::download(new SparepartsTemplateExport, $filename);
     }
 
-    // KOREKSI: Tambahkan fungsi private untuk menjalankan skrip Python
-    /**
-     * Menjalankan skrip Python untuk mengekstrak vektor fitur dari gambar.
-     */
-    private function _runVectorExtraction(Sparepart $sparepart, string $imagePath)
-    {
-        // Path absolut ke gambar yang baru di-upload
-        $absoluteImagePath = storage_path('app/public/' . $imagePath);
-
-        $command = [
-            base_path('venv-tf/Scripts/python.exe'), // <-- Alamat BARU yang benar
-            base_path('scripts/index_vector.py'),
-            $absoluteImagePath,
-            $sparepart->id,
-        ];
-
-        $process = new Process($command);
-        $process->setTimeout(300);
-        // KOREKSI: Set environment variable USERPROFILE sebelum menjalankan
-        $process->setEnv(['USERPROFILE' => storage_path()]); // Arahkan ke folder storage
-        $process->run();
-
-        // Catat hasilnya di log untuk debugging
-        if (!$process->isSuccessful()) {
-            Log::error(
-                'Vector Indexing Failed for sparepart ID ' . $sparepart->id .
-                ': ' . $process->getErrorOutput()
-            );
-        } else {
-            Log::info(
-                'Vector Indexing Success for sparepart ID ' . $sparepart->id .
-                ': ' . $process->getOutput()
-            );
-        }
-    }
+    // REK 1 & 2: Indexing kini ditangani oleh App\Jobs\IndexSparepartVector
+    // yang memanggil Python service (ResNetServiceClient) di background.
+    // Method _runVectorExtraction (pemanggilan `python script.py` sinkron)
+    // SUDAH DIHAPUS karena menjadi penyebab utama lambatnya request.
 }

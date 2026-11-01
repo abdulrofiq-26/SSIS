@@ -25,6 +25,6 @@ class SparepartImage extends Model
     // Helper untuk mendapatkan URL gambar
     public function getUrlAttribute(): string
     {
-        return asset('storage/' . $this->path);
+        return route('storage.media', ltrim($this->path, '/'));
     }
 }

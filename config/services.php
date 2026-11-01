@@ -31,4 +31,15 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | ResNet50 Python Service (CBIR)
+    |--------------------------------------------------------------------------
+    | Upstream service Python yang memuat model ResNet50 & ChromaDB sekali di
+    | memori, sehingga pencarian gambar tidak perlu cold-start TensorFlow lagi.
+    */
+    'resnet' => [
+        'url' => env('PY_SERVICE_URL', 'http://127.0.0.1:5005'),
+    ],
+
 ];

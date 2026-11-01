@@ -99,7 +99,7 @@
                         @forelse ($sparepart->images as $image)
                             {{-- Ganti Wrapper: Tambahkan ID unik untuk referensi JS --}}
                             <div class="existing-image-wrapper position-relative" id="image-wrapper-{{ $image->id }}">
-                                <img src="{{ asset('storage/' . $image->path) }}" alt="Gambar" 
+                                <img src="{{ route('storage.media', ltrim($image->path, '/')) }}" alt="Gambar" 
                                     class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover;">
                                 
                                 {{-- Tombol Hapus 'X' (Button) --}}

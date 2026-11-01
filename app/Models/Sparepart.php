@@ -20,7 +20,13 @@ class Sparepart extends Model
         'lokasi_penyimpanan',
         'jumlah_stok',
         'jumlah_satuan',
+        'vector_path',
+        'is_indexed',
         // 'gambar_utama' sudah dihapus dari fillable
+    ];
+
+    protected $casts = [
+        'is_indexed' => 'boolean',
     ];
     
     public function brand(): BelongsTo

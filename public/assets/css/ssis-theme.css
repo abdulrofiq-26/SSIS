@@ -1,0 +1,2003 @@
+/* ==========================================================================
+   SSIS — Tema (Dark Mode) + Animasi Loading
+   --------------------------------------------------------------------------
+   File ini menambahkan:
+     1. Dark mode yang konsisten dengan palet warna template (biru #012970 / #4154f1)
+        dengan meng-override CSS variables template (--background-color, dst).
+     2. Animasi "loading" bertema sparepart (roda gigi berputar + pulse) untuk
+        pencarian teks maupun pencarian gambar.
+   Cara pakai: tambahkan class `dark-mode` pada <html> atau <body>.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Transisi halus saat berpindah tema
+   -------------------------------------------------------------------------- */
+html,
+body,
+.card,
+.list-group-item,
+.header,
+.form-control,
+.btn,
+.alert {
+  transition: background-color .35s ease, color .35s ease, border-color .35s ease;
+}
+
+/* --------------------------------------------------------------------------
+   1. DARK MODE — override variabel template
+   -------------------------------------------------------------------------- */
+html.dark-mode {
+  color-scheme: dark;
+
+  /* Global colors */
+  --background-color: #0b1020;
+  /* latar utama: biru malam */
+  --default-color: #c7d0e0;
+  /* teks biasa */
+  --heading-color: #e8eefc;
+  /* judul */
+  --accent-color: #6b7cff;
+  /* aksen biru lebih terang agar kontras */
+  --surface-color: #151b31;
+  /* kartu / panel */
+  --contrast-color: #ffffff;
+
+  /* Nav menu */
+  --nav-color: #e8eefc;
+  --nav-hover-color: #6b7cff;
+  --nav-mobile-background-color: #151b31;
+  --nav-dropdown-background-color: #151b31;
+  --nav-dropdown-color: #c7d0e0;
+  --nav-dropdown-hover-color: #6b7cff;
+}
+
+/* Header pada index page: transparan terang -> gelap */
+html.dark-mode .index-page .header {
+  --background-color: rgba(11, 16, 32, 0);
+}
+
+html.dark-mode .index-page.scrolled .header,
+html.dark-mode .header {
+  --background-color: #0f1528;
+}
+
+html.dark-mode .scrolled .header {
+  box-shadow: 0 0 18px rgba(0, 0, 0, 0.6);
+}
+
+/* Hero background: tambahkan lapisan gelap agar gambar tetap terlihat nyaman */
+html.dark-mode .hero {
+  background:
+    linear-gradient(rgba(11, 16, 32, 0.82), rgba(11, 16, 32, 0.9)),
+    url(../img/hero-bg.png) top center no-repeat;
+  background-size: cover;
+}
+
+/* ---- Kartu / panel ---- */
+html.dark-mode .card {
+  background-color: var(--surface-color);
+  border: 1px solid rgba(107, 124, 255, 0.15);
+  color: var(--default-color);
+}
+
+/* ---- Form controls ---- */
+html.dark-mode .form-control,
+html.dark-mode .form-select {
+  background-color: #0f1528;
+  border-color: rgba(107, 124, 255, 0.25);
+  color: var(--default-color);
+}
+
+html.dark-mode .form-control::placeholder {
+  color: #7b879e;
+}
+
+html.dark-mode .form-control:focus,
+html.dark-mode .form-select:focus {
+  background-color: #0f1528;
+  color: var(--default-color);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 0.2rem rgba(107, 124, 255, 0.25);
+}
+
+html.dark-mode .input-group-text {
+  background-color: #0f1528;
+  border-color: rgba(107, 124, 255, 0.25);
+  color: var(--default-color);
+}
+
+/* ---- List group & alert ---- */
+html.dark-mode .list-group-item {
+  background-color: var(--surface-color);
+  border-color: rgba(107, 124, 255, 0.12);
+  color: var(--default-color);
+}
+
+html.dark-mode .list-group-item-action:hover,
+html.dark-mode .list-group-item-action:focus {
+  background-color: #1b2340;
+  color: #ffffff;
+}
+
+html.dark-mode .alert-info {
+  background-color: #12203a;
+  border-color: #1d3a5c;
+  color: #a9c7e8;
+}
+
+html.dark-mode .alert-warning {
+  background-color: #33280e;
+  border-color: #5c4a1d;
+  color: #e8cf8f;
+}
+
+html.dark-mode .alert-danger {
+  background-color: #3a1418;
+  border-color: #6b2229;
+  color: #f0a9b0;
+}
+
+/* ---- Teks bantu (utilities bawaan Bootstrap) ---- */
+html.dark-mode .text-muted {
+  color: #8a95ab !important;
+}
+
+html.dark-mode .text-secondary {
+  color: #a4b0c8 !important;
+}
+
+html.dark-mode .text-dark {
+  color: #e8eefc !important;
+}
+
+html.dark-mode hr {
+  border-color: rgba(255, 255, 255, 0.12);
+  opacity: 1;
+}
+
+/* ---- Tombol outline ---- */
+html.dark-mode .btn-outline-secondary {
+  color: var(--default-color);
+  border-color: rgba(107, 124, 255, 0.4);
+}
+
+html.dark-mode .btn-outline-secondary:hover {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #fff;
+}
+
+/* ---- Logo sitename ---- */
+html.dark-mode .header .sitename,
+html.dark-mode .header .logo h1 {
+  color: #e8eefc;
+}
+
+/* --------------------------------------------------------------------------
+   Tombol toggle tema
+   -------------------------------------------------------------------------- */
+.theme-toggle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--accent-color), transparent 60%);
+  background: color-mix(in srgb, var(--accent-color), transparent 90%);
+  color: var(--accent-color);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  cursor: pointer;
+  transition: all .3s ease;
+  margin-left: .75rem;
+}
+
+.theme-toggle:hover {
+  background: var(--accent-color);
+  color: #fff;
+  transform: rotate(18deg);
+}
+
+html.dark-mode .theme-toggle {
+  border-color: rgba(107, 124, 255, 0.5);
+  background: rgba(107, 124, 255, 0.15);
+  color: #cdd6ff;
+}
+
+html.dark-mode .theme-toggle:hover {
+  background: var(--accent-color);
+  color: #fff;
+}
+
+/* ==========================================================================
+   2. ANIMASI LOADING BERTEMA (Sparepart)
+   ========================================================================== */
+
+/* ---- Overlay penuh layar ---- */
+.ssis-loader-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity .3s ease;
+}
+
+html.dark-mode .ssis-loader-overlay {
+  background: rgba(11, 16, 32, 0.86);
+}
+
+.ssis-loader-overlay.is-active {
+  display: flex;
+  opacity: 1;
+}
+
+/* ---- Animasi roda gigi (gear) ---- */
+.ssis-gear {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Gear besar */
+.ssis-gear .gear-large {
+  position: absolute;
+  font-size: 60px;
+  color: var(--accent-color);
+  animation: ssis-spin 2.6s linear infinite;
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--accent-color), transparent 45%));
+}
+
+/* Gear kecil yang berlawanan arah */
+.ssis-gear .gear-small {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  font-size: 30px;
+  color: color-mix(in srgb, var(--accent-color), #000 25%);
+  animation: ssis-spin-reverse 1.8s linear infinite;
+}
+
+html.dark-mode .ssis-gear .gear-small {
+  color: #8f9bff;
+}
+
+@keyframes ssis-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ssis-spin-reverse {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+/* ---- Cincin berdenyut di belakang gear ---- */
+.ssis-gear::before,
+.ssis-gear::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent-color), transparent 40%);
+  animation: ssis-pulse 2s ease-out infinite;
+}
+
+.ssis-gear::after {
+  animation-delay: 1s;
+}
+
+@keyframes ssis-pulse {
+  0% {
+    transform: scale(.75);
+    opacity: .7;
+  }
+
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+/* ---- Teks status ---- */
+.ssis-loader-text {
+  margin-top: 26px;
+  font-family: var(--heading-font);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--heading-color);
+  text-align: center;
+  letter-spacing: .3px;
+}
+
+.ssis-loader-sub {
+  margin-top: 6px;
+  font-size: .85rem;
+  color: var(--default-color);
+  opacity: .8;
+  text-align: center;
+}
+
+/* ---- Garis progres tak-tentu ---- */
+.ssis-loader-bar {
+  margin-top: 18px;
+  width: 220px;
+  height: 4px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--accent-color), transparent 85%);
+}
+
+.ssis-loader-bar span {
+  display: block;
+  height: 100%;
+  width: 40%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+  animation: ssis-slide 1.4s ease-in-out infinite;
+}
+
+@keyframes ssis-slide {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(310%);
+  }
+}
+
+/* ---- Loading inline pada tombol (spin icon) ---- */
+.btn.is-loading {
+  pointer-events: none;
+  opacity: .75;
+}
+
+.btn.is-loading .bi {
+  display: inline-block;
+  animation: ssis-spin .9s linear infinite;
+}
+
+/* ---- Menghormati preferensi pengguna: kurangi gerakan ---- */
+@media (prefers-reduced-motion: reduce) {
+
+  .ssis-gear .gear-large,
+  .ssis-gear .gear-small,
+  .ssis-gear::before,
+  .ssis-gear::after,
+  .ssis-loader-bar span,
+  .btn.is-loading .bi {
+    animation: none !important;
+  }
+}
+
+/* ==========================================================================
+   3. LAYOUT FULL-WIDTH & RESPONSIF (semua ukuran layar)
+   --------------------------------------------------------------------------
+   Tujuan:
+     - Halaman welcome & search memakai SELURUH lebar layar (kiri-kanan).
+     - Tetap nyaman dibaca di layar sangat lebar (diberi batas maksimal
+       yang lapang, bukan sempit).
+     - Tata letak menyesuaikan dari desktop besar -> tablet -> mobile.
+   ========================================================================== */
+
+/* --- Variabel lebar konten (sesuai kebutuhan SSIS) --- */
+:root {
+  --ssis-page-pad: 1rem;
+  /* padding tepi (mobile) */
+  --ssis-max-read: 1100px;
+  /* lebar maksimum area baca yang nyaman */
+  --ssis-max-wide: 1500px;
+  /* lebar maksimum area luas */
+}
+
+@media (min-width: 576px) {
+  :root {
+    --ssis-page-pad: 1.5rem;
+  }
+}
+
+@media (min-width: 992px) {
+  :root {
+    --ssis-page-pad: 2.5rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3a. Container menjadi full-width
+   Bootstrap telah membatasi .container dengan max-width. Kita lepaskan agar
+   memakai seluruh lebar layar, dengan padding tepi yang menyesuaikan ukuran.
+   -------------------------------------------------------------------------- */
+.ssis-fullwidth .container,
+.ssis-fullwidth .container-fluid,
+.ssis-fullwidth .container-xl,
+.ssis-fullwidth .container-lg,
+.ssis-fullwidth .container-md,
+.ssis-fullwidth .container-sm {
+  width: 100%;
+  max-width: 100%;
+  padding-left: var(--ssis-page-pad);
+  padding-right: var(--ssis-page-pad);
+}
+
+/* Header juga full-width dengan padding yang sama */
+.ssis-fullwidth .header .container-fluid,
+.ssis-fullwidth .header .container-xl {
+  width: 100%;
+  max-width: 100%;
+  padding-left: var(--ssis-page-pad);
+  padding-right: var(--ssis-page-pad);
+}
+
+/* --------------------------------------------------------------------------
+   3b. Kartu pencarian: memenuhi lebar, dengan batas baca yang lapang
+   -------------------------------------------------------------------------- */
+.ssis-search-shell {
+  width: 100%;
+  max-width: var(--ssis-max-wide);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ssis-search-shell .card {
+  width: 100%;
+  border-radius: 16px;
+}
+
+@media (max-width: 575.98px) {
+  .ssis-search-shell .card-body {
+    padding: 1.1rem !important;
+  }
+}
+
+/* Area hasil: jangan dibatasi kolom sempit, pakai lebar penuh shell */
+.ssis-results-area {
+  width: 100%;
+}
+
+/* Hasil pencarian dalam bentuk grid agar memanfaatkan lebar layar.
+   Mobile: 1 kolom -> Tablet: 2 kolom -> Desktop lebar: 3 kolom. */
+.ssis-result-grid .list-group-item {
+  border-radius: 12px;
+  margin-bottom: .65rem;
+  border: 1px solid rgba(0, 0, 0, .08);
+}
+
+html.dark-mode .ssis-result-grid .list-group-item {
+  border-color: rgba(107, 124, 255, .12);
+}
+
+.ssis-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .65rem;
+}
+
+@media (min-width: 768px) {
+  .ssis-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1400px) {
+  .ssis-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3c. Item hasil: menyesuaikan dari baris lebar -> tumpukan di mobile
+   -------------------------------------------------------------------------- */
+.ssis-result-item {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  width: 100%;
+}
+
+.ssis-result-thumb {
+  flex: 0 0 auto;
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.ssis-result-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ssis-result-thumb.is-logo img {
+  object-fit: contain;
+  background: #fff;
+}
+
+.ssis-result-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* penting agar text-truncate bekerja di flex */
+}
+
+.ssis-result-main .ssis-title {
+  font-weight: 700;
+  margin-bottom: .15rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ssis-result-meta {
+  font-size: .82rem;
+  color: var(--default-color);
+  opacity: .8;
+  word-break: break-word;
+}
+
+.ssis-result-side {
+  flex: 0 0 auto;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  align-items: flex-end;
+}
+
+/* Di layar sangat kecil: tumpuk info stok ke bawah agar tidak sempit */
+@media (max-width: 575.98px) {
+  .ssis-result-item {
+    flex-wrap: wrap;
+  }
+
+  .ssis-result-side {
+    width: 100%;
+    align-items: flex-start;
+    text-align: left;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-left: 0 !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3d. Form pencarian teks: tombol turun penuh di layar kecil
+   -------------------------------------------------------------------------- */
+.ssis-search-form .input-group {
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 575.98px) {
+  .ssis-search-form .input-group {
+    flex-wrap: wrap;
+  }
+
+  .ssis-search-form .form-control {
+    width: 100%;
+    border-radius: 10px !important;
+    margin-bottom: .6rem;
+  }
+
+  .ssis-search-form .btn {
+    width: 100%;
+    border-radius: 10px !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3e. Tombol Upload / Camera: 1 kolom di mobile, 2 kolom di >= 576px
+   -------------------------------------------------------------------------- */
+.ssis-upload-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .85rem;
+}
+
+@media (min-width: 576px) {
+  .ssis-upload-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ssis-upload-grid .btn {
+  border-radius: 14px;
+  transition: transform .2s ease, border-color .2s ease, background-color .2s ease;
+}
+
+.ssis-upload-grid .btn:hover {
+  transform: translateY(-2px);
+}
+
+/* --------------------------------------------------------------------------
+   3f. Welcome page: hero menyesuaikan layar
+   -------------------------------------------------------------------------- */
+.ssis-fullwidth .hero .container,
+.ssis-fullwidth .section .container {
+  width: 100%;
+  max-width: var(--ssis-max-wide);
+  padding-left: var(--ssis-page-pad);
+  padding-right: var(--ssis-page-pad);
+}
+
+/* Judul hero lebih terkendali di layar kecil */
+.ssis-fullwidth .hero h1 {
+  font-size: clamp(1.6rem, 5vw, 3rem);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.ssis-fullwidth .hero p {
+  font-size: clamp(.95rem, 2.2vw, 1.1rem);
+}
+
+/* Gambar hero tidak melampaui lebar layar */
+.ssis-fullwidth .hero-img img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Header: logo & tombol tidak tumpang tindih di layar kecil */
+.ssis-fullwidth .header .sitename {
+  font-size: clamp(1rem, 3.5vw, 1.6rem);
+}
+
+.ssis-fullwidth .header .logo img {
+  max-height: 34px;
+  width: auto;
+}
+
+/* Tombol toggle tema tetap terlihat & mudah disentuh di mobile */
+.theme-toggle {
+  flex: 0 0 auto;
+}
+
+/* --------------------------------------------------------------------------
+   3g. Hilangkan scroll horizontal yang tidak disengaja
+   -------------------------------------------------------------------------- */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Pastikan gambar & tabel tidak meluber */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* --------------------------------------------------------------------------
+   3h. Penyesuaian khusus layar sangat kecil (<= 360px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 360px) {
+  :root {
+    --ssis-page-pad: .75rem;
+  }
+
+  .ssis-loader-text {
+    font-size: .95rem;
+  }
+
+  .ssis-loader-bar {
+    width: 170px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3i. Layar sangat besar (>= 1800px): tetap beri napas tanpa terlalu melebar
+   -------------------------------------------------------------------------- */
+@media (min-width: 1800px) {
+  .ssis-search-shell {
+    max-width: 1700px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3j. Penyesuaian elemen khas welcome page (FlexStart)
+   -------------------------------------------------------------------------- */
+
+/* Padding hero mengikuti padding tepi halaman agar full-width & konsisten */
+.ssis-fullwidth .hero {
+  padding-top: calc(80px + 1rem);
+}
+
+@media (max-width: 991.98px) {
+  .ssis-fullwidth .hero {
+    min-height: auto;
+    padding-top: 110px;
+    padding-bottom: 40px;
+    text-align: center;
+  }
+
+  /* Gambar hero diletakkan di atas teks pada mobile, dengan jarak wajar */
+  .ssis-fullwidth .hero .hero-img {
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* Tombol "Find Sparepart" full-width di layar kecil, proporsional di besar */
+.ssis-fullwidth .hero .btn-get-started {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+}
+
+@media (max-width: 575.98px) {
+  .ssis-fullwidth .hero .btn-get-started {
+    width: 100%;
+  }
+}
+
+/* Tombol header (Log in / Dashboard) tetap rapi di layar kecil */
+@media (max-width: 575.98px) {
+  .ssis-fullwidth .header .btn-getstarted {
+    padding: .45rem .9rem;
+    font-size: .85rem;
+  }
+}
+
+/* Baris pada section selalu full-width (tanpa margin negatif berlebih) */
+.ssis-fullwidth .row {
+  --bs-gutter-x: 1.5rem;
+}
+
+/* ==========================================================================
+   4. HALAMAN PENCARIAN — TAMPILAN AWAL (sesuai desain)
+   --------------------------------------------------------------------------
+   Susunan: judul "Find Your Spare Part" -> tombol Kamera & Upload ->
+   input pencarian teks -> History searching.
+   ========================================================================== */
+
+/* ---- Judul dengan ikon bintang ---- */
+/* Catatan: .section-title h2 di template ditampilkan sebagai badge kecil.
+   Karena itu kita naikkan spesifisitas agar judul pencarian tampil BESAR. */
+.section-title h2.ssis-search-heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  font-size: clamp(1.6rem, 4.5vw, 2.6rem);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 800;
+  color: var(--heading-color);
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  margin-bottom: .25rem;
+}
+
+.ssis-search-heading .bi-stars {
+  font-size: .8em;
+  background: linear-gradient(135deg, #7c5cff, #b06bff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 6px rgba(124, 92, 255, .35));
+}
+
+html.dark-mode .ssis-search-heading .bi-stars {
+  filter: drop-shadow(0 0 8px rgba(160, 130, 255, .55));
+}
+
+/* Sembunyikan sub-judul bawaan template (bagian dari .section-title) */
+.section-title p {
+  display: none;
+}
+
+/* ---- Kartu pencarian: border membulat, latar lembut ---- */
+.ssis-search-card {
+  width: 100%;
+  border-radius: 26px;
+  border: 1.5px solid rgba(65, 84, 241, .35);
+  background: rgba(255, 255, 255, .55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 18px 50px rgba(80, 100, 220, .12);
+  padding: .5rem;
+}
+
+html.dark-mode .ssis-search-card {
+  border-color: rgba(120, 140, 255, .35);
+  background: rgba(21, 27, 49, .65);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .45);
+}
+
+/* ---- Tombol Kamera & Upload (ikon besar dalam kotak outline bulat) ---- */
+.ssis-media-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.ssis-media-btn {
+  width: 84px;
+  height: 60px;
+  border-radius: 16px;
+  border: 2px solid #12235c;
+  background: #fff;
+  color: #12235c;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  cursor: pointer;
+  transition: transform .2s ease, background-color .2s ease, color .2s ease, border-color .2s ease;
+  box-shadow: 0 2px 8px rgba(18, 35, 92, .08);
+}
+
+.ssis-media-btn:hover {
+  transform: translateY(-3px);
+  background: #12235c;
+  color: #fff;
+}
+
+.ssis-media-btn:active {
+  transform: translateY(-1px);
+}
+
+html.dark-mode .ssis-media-btn {
+  border-color: #8fa0ff;
+  background: transparent;
+  color: #cdd6ff;
+}
+
+html.dark-mode .ssis-media-btn:hover {
+  background: #8fa0ff;
+  color: #0b1020;
+}
+
+@media (max-width: 575.98px) {
+  .ssis-media-actions {
+    gap: 1rem;
+  }
+
+  .ssis-media-btn {
+    width: 72px;
+    height: 54px;
+    font-size: 1.5rem;
+  }
+}
+
+/* ---- Input pencarian teks (full-width, tombol bulat di kanan) ---- */
+.ssis-text-search {
+  position: relative;
+  width: 100%;
+}
+
+.ssis-text-input {
+  width: 100%;
+  padding: 1rem 4.5rem 1rem 1.4rem;
+  font-size: 1.05rem;
+  border-radius: 14px;
+  border: 2px solid rgba(176, 107, 255, .55);
+  /* garis ungu seperti gambar */
+  background: rgba(255, 255, 255, .7);
+  color: var(--default-color);
+  outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
+}
+
+.ssis-text-input::placeholder {
+  color: #7b879e;
+  font-size: 1.02rem;
+}
+
+.ssis-text-input:focus {
+  border-color: #7c5cff;
+  box-shadow: 0 0 0 .22rem rgba(124, 92, 255, .18);
+  background: #fff;
+}
+
+html.dark-mode .ssis-text-input {
+  background: rgba(15, 21, 40, .8);
+  border-color: rgba(140, 120, 255, .55);
+  color: #e8eefc;
+}
+
+html.dark-mode .ssis-text-input:focus {
+  background: #0f1528;
+  box-shadow: 0 0 0 .22rem rgba(124, 92, 255, .28);
+}
+
+/* Tombol search bulat di dalam input */
+.ssis-text-search-btn {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: #12235c;
+  color: #fff;
+  font-size: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color .2s ease, transform .2s ease;
+}
+
+.ssis-text-search-btn:hover {
+  background: #1d3480;
+  transform: translateY(-50%) scale(1.06);
+}
+
+.ssis-text-search-btn:active {
+  transform: translateY(-50%) scale(.98);
+}
+
+html.dark-mode .ssis-text-search-btn {
+  background: #4a5bff;
+}
+
+html.dark-mode .ssis-text-search-btn:hover {
+  background: #6b7cff;
+}
+
+@media (max-width: 575.98px) {
+  .ssis-text-input {
+    padding: 1rem 3.9rem 1rem 1.1rem;
+    font-size: 1rem;
+  }
+
+  .ssis-text-search-btn {
+    width: 42px;
+    height: 42px;
+    font-size: 1.1rem;
+  }
+}
+
+/* ---- History searching ---- */
+.ssis-history {
+  margin-top: 1.6rem;
+}
+
+.ssis-history-title {
+  font-weight: 700;
+  color: var(--heading-color);
+  margin-bottom: .85rem;
+  font-size: 1.02rem;
+}
+
+.ssis-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ssis-history-item {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .45rem .5rem;
+  border-radius: 10px;
+  transition: background-color .18s ease;
+}
+
+.ssis-history-item:hover {
+  background: rgba(124, 92, 255, .08);
+}
+
+html.dark-mode .ssis-history-item:hover {
+  background: rgba(124, 92, 255, .12);
+}
+
+.ssis-history-icon {
+  color: #8a93a8;
+  font-size: 1.05rem;
+  flex: 0 0 auto;
+}
+
+html.dark-mode .ssis-history-icon {
+  color: #8f9bff;
+}
+
+.ssis-history-link {
+  color: var(--default-color);
+  text-decoration: none;
+  font-size: .95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color .18s ease;
+}
+
+.ssis-history-link:hover {
+  color: #7c5cff;
+  text-decoration: underline;
+}
+
+/* ---- Petunjuk singkat di halaman awal ---- */
+.ssis-hint {
+  margin-top: 1.4rem;
+  color: var(--default-color);
+  opacity: .75;
+  font-size: .92rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.ssis-hint .bi {
+  font-size: 1.15rem;
+}
+
+/* ==========================================================================
+   5. HASIL PENCARIAN GAMBAR — KARTU GRID (mirip desain)
+   --------------------------------------------------------------------------
+   Setiap hasil = kartu: gambar di atas, info (kode/brand/kategori/lokasi),
+   lalu persentase kemiripan + progress bar. Item pertama (paling mirip)
+   berada paling kiri dan diberi tanda "Paling Mirip".
+   ========================================================================== */
+
+.ssis-results-heading {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  font-weight: 800;
+  color: var(--heading-color);
+  margin-bottom: 1.1rem;
+  font-size: clamp(1.1rem, 3vw, 1.5rem);
+}
+
+.ssis-results-heading .bi {
+  color: #7c5cff;
+}
+
+.ssis-results-count {
+  margin-left: auto;
+  font-size: .8rem;
+  font-weight: 600;
+  padding: .3rem .7rem;
+  border-radius: 999px;
+  background: rgba(124, 92, 255, .12);
+  color: #7c5cff;
+}
+
+html.dark-mode .ssis-results-count {
+  background: rgba(124, 92, 255, .22);
+  color: #b9a8ff;
+}
+
+/* ---- Grid kartu responsif ---- */
+.ssis-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (min-width: 576px) {
+  .ssis-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .ssis-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .ssis-card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1500px) {
+  .ssis-card-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+/* ---- Kartu ---- */
+.ssis-match-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  border: 2px solid #12235c;
+  background: #fff;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.ssis-match-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 30px rgba(18, 35, 92, .18);
+  color: inherit;
+}
+
+html.dark-mode .ssis-match-card {
+  border-color: #4a5bff;
+  background: #151b31;
+}
+
+html.dark-mode .ssis-match-card:hover {
+  box-shadow: 0 14px 30px rgba(0, 0, 0, .5);
+}
+
+/* Kartu paling mirip: sorot dengan border aksen */
+.ssis-match-card.is-best-match {
+  border-color: #7c5cff;
+  box-shadow: 0 0 0 3px rgba(124, 92, 255, .18);
+}
+
+/* Badge "Paling Mirip" */
+.ssis-best-badge {
+  position: absolute;
+  top: .55rem;
+  left: .55rem;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  font-size: .68rem;
+  font-weight: 700;
+  padding: .25rem .55rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7c5cff, #b06bff);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(124, 92, 255, .45);
+  white-space: nowrap;
+}
+
+/* ---- Gambar dalam kartu ---- */
+.ssis-match-img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #f4f6fb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+html.dark-mode .ssis-match-img {
+  background: #0f1528;
+}
+
+.ssis-match-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ssis-match-img-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .35rem;
+  padding: .5rem;
+  text-align: center;
+  background: linear-gradient(135deg, #eef1ff 0%, #e6e9ff 45%, #f3eaff 100%);
+  color: #6b7cff;
+}
+
+html.dark-mode .ssis-match-img-fallback {
+  background: linear-gradient(135deg, #171e38 0%, #1c2547 50%, #251d3f 100%);
+  color: #9fa9ff;
+}
+
+/* Ikon di dalam lingkaran lembut */
+.ssis-match-img-fallback .bi {
+  font-size: 1.9rem;
+  line-height: 1;
+  padding: .55rem;
+  border-radius: 50%;
+  background: rgba(124, 92, 255, .12);
+  box-shadow: inset 0 0 0 1px rgba(124, 92, 255, .18);
+}
+
+html.dark-mode .ssis-match-img-fallback .bi {
+  background: rgba(124, 92, 255, .2);
+  box-shadow: inset 0 0 0 1px rgba(140, 150, 255, .28);
+}
+
+/* Label nama brand / "Sparepart" */
+.ssis-match-img-fallback span {
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  opacity: .8;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Kartu kecil: sesuaikan ukuran fallback */
+.ssis-match-card-sm .ssis-match-img-fallback .bi {
+  font-size: 1.5rem;
+  padding: .45rem;
+}
+
+.ssis-match-card-sm .ssis-match-img-fallback span {
+  font-size: .62rem;
+}
+
+/* ---- Isi info ---- */
+.ssis-match-body {
+  padding: .8rem .9rem .4rem;
+  flex: 1 1 auto;
+}
+
+.ssis-match-name {
+  font-weight: 800;
+  font-size: .95rem;
+  margin: 0 0 .5rem;
+  color: var(--heading-color);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.5em;
+}
+
+.ssis-match-meta {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ssis-match-meta li {
+  font-size: .76rem;
+  color: var(--default-color);
+  opacity: .85;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Skor kemiripan + progress bar ---- */
+.ssis-match-score {
+  padding: .4rem .9rem .9rem;
+}
+
+.ssis-match-score-value {
+  display: block;
+  text-align: center;
+  font-weight: 800;
+  font-size: .95rem;
+  color: var(--heading-color);
+  margin-bottom: .35rem;
+}
+
+.ssis-match-bar {
+  width: 100%;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(124, 92, 255, .12);
+  overflow: hidden;
+  border: 1px solid rgba(124, 92, 255, .25);
+}
+
+html.dark-mode .ssis-match-bar {
+  background: rgba(124, 92, 255, .18);
+  border-color: rgba(124, 92, 255, .35);
+}
+
+.ssis-match-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #4a5bff, #b06bff);
+  transition: width .6s ease;
+}
+
+/* Layar sangat kecil: perkecil padding */
+@media (max-width: 400px) {
+  .ssis-match-name {
+    font-size: .85rem;
+  }
+
+  .ssis-match-meta li {
+    font-size: .7rem;
+  }
+
+  .ssis-card-grid {
+    gap: .7rem;
+  }
+}
+
+/* ==========================================================================
+   6. KARTU RINGKAS (hasil pencarian teks) + MODAL DETAIL
+   ========================================================================== */
+
+/* ---- Kartu versi kecil: lebih banyak muat dalam satu baris ---- */
+.ssis-card-grid-sm {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .7rem;
+}
+
+@media (min-width: 576px) {
+  .ssis-card-grid-sm {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .ssis-card-grid-sm {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .ssis-card-grid-sm {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1500px) {
+  .ssis-card-grid-sm {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+
+.ssis-match-card-sm {
+  border-radius: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.ssis-match-card-sm .ssis-match-img {
+  aspect-ratio: 1 / 1;
+}
+
+.ssis-match-card-sm .ssis-match-body {
+  padding: .55rem .6rem .2rem;
+}
+
+.ssis-match-card-sm .ssis-match-name {
+  font-size: .82rem;
+  min-height: 2.4em;
+  margin-bottom: .3rem;
+  -webkit-line-clamp: 2;
+}
+
+.ssis-match-card-sm .ssis-match-meta li {
+  font-size: .68rem;
+  line-height: 1.45;
+}
+
+.ssis-match-card-sm .ssis-match-stock {
+  padding: 0 .6rem .6rem;
+}
+
+.ssis-match-card-sm .ssis-match-stock .badge {
+  font-size: .66rem;
+  font-weight: 600;
+  padding: .25rem .5rem;
+}
+
+/* ---- Badge stok: warna ungu sesuai tema (mengalahkan bg-success/bg-danger) ---- */
+.ssis-match-card .ssis-stock-badge,
+.ssis-match-stock .ssis-stock-badge {
+  background: linear-gradient(135deg, #7c5cff, #6b7cff) !important;
+  color: #fff !important;
+  font-weight: 700;
+  border: none;
+  box-shadow: 0 3px 9px rgba(124, 92, 255, .32);
+}
+
+html.dark-mode .ssis-stock-badge {
+  background: linear-gradient(135deg, #8b6dff, #6b7cff) !important;
+  box-shadow: 0 3px 12px rgba(124, 92, 255, .5);
+}
+
+/* Tombol kartu: hilangkan gaya bawaan browser */
+button.ssis-match-card {
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+}
+
+/* Sorotan query pada judul hasil */
+.ssis-query-highlight {
+  color: #7c5cff;
+  font-weight: 800;
+}
+
+/* --------------------------------------------------------------------------
+   6b. MODAL DETAIL
+   -------------------------------------------------------------------------- */
+body.ssis-modal-open {
+  overflow: hidden;
+}
+
+.ssis-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.ssis-modal[hidden] {
+  display: none;
+}
+
+.ssis-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 12, 24, .72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: ssis-fade-in .2s ease;
+}
+
+@keyframes ssis-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ssis-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.ssis-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 980px;
+  max-height: 92vh;
+  overflow-y: auto;
+  border-radius: 22px;
+  background: #fff;
+  border: 2px solid #12235c;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, .45);
+  animation: ssis-pop-in .25s ease;
+}
+
+html.dark-mode .ssis-modal-panel {
+  background: #151b31;
+  border-color: #4a5bff;
+}
+
+.ssis-modal-close {
+  position: absolute;
+  top: .8rem;
+  right: .8rem;
+  z-index: 3;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(18, 35, 92, .08);
+  color: var(--heading-color);
+  font-size: 1.05rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color .2s ease, transform .2s ease;
+}
+
+.ssis-modal-close:hover {
+  background: #12235c;
+  color: #fff;
+  transform: rotate(90deg);
+}
+
+html.dark-mode .ssis-modal-close {
+  background: rgba(140, 150, 255, .18);
+}
+
+html.dark-mode .ssis-modal-close:hover {
+  background: #4a5bff;
+}
+
+/* Isi modal: 2 kolom (gambar | info) */
+.ssis-modal-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.2rem;
+  padding: 1.3rem;
+}
+
+@media (min-width: 768px) {
+  .ssis-modal-body {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: 1.8rem;
+    padding: 1.8rem;
+  }
+}
+
+/* Gambar besar */
+.ssis-modal-media {
+  min-width: 0;
+}
+
+.ssis-modal-main-img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #f4f6fb;
+  border: 1px solid rgba(18, 35, 92, .12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+html.dark-mode .ssis-modal-main-img {
+  background: #0f1528;
+  border-color: rgba(140, 150, 255, .2);
+}
+
+.ssis-modal-main-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.ssis-modal-thumbs {
+  display: flex;
+  gap: .5rem;
+  margin-top: .7rem;
+  flex-wrap: wrap;
+}
+
+.ssis-modal-thumb {
+  width: 62px;
+  height: 62px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: #f4f6fb;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color .2s ease, transform .2s ease;
+}
+
+.ssis-modal-thumb:hover {
+  transform: translateY(-2px);
+}
+
+.ssis-modal-thumb.is-active {
+  border-color: #7c5cff;
+}
+
+.ssis-modal-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+html.dark-mode .ssis-modal-thumb {
+  background: #0f1528;
+}
+
+/* Info kanan */
+.ssis-modal-info {
+  min-width: 0;
+}
+
+.ssis-modal-score {
+  margin-bottom: 1rem;
+  padding: .8rem 1rem;
+  border-radius: 14px;
+  background: rgba(124, 92, 255, .08);
+  border: 1px solid rgba(124, 92, 255, .22);
+}
+
+.ssis-modal-score-label {
+  font-size: .74rem;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--default-color);
+  opacity: .8;
+  display: block;
+}
+
+.ssis-modal-score-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #7c5cff;
+  margin: .1rem 0 .5rem;
+}
+
+.ssis-modal-title {
+  font-size: clamp(1.2rem, 3vw, 1.7rem);
+  font-weight: 800;
+  color: var(--heading-color);
+  margin: 0 0 .35rem;
+  line-height: 1.25;
+}
+
+.ssis-modal-code {
+  display: inline-block;
+  font-size: .8rem;
+  font-weight: 700;
+  padding: .3rem .7rem;
+  border-radius: 999px;
+  background: rgba(18, 35, 92, .08);
+  color: var(--heading-color);
+  margin-bottom: 1.1rem;
+}
+
+html.dark-mode .ssis-modal-code {
+  background: rgba(140, 150, 255, .16);
+}
+
+.ssis-modal-meta {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .55rem .9rem;
+  margin: 0 0 1.2rem;
+}
+
+@media (min-width: 480px) {
+  .ssis-modal-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ssis-modal-meta>div {
+  min-width: 0;
+  padding: .55rem .75rem;
+  border-radius: 12px;
+  background: rgba(18, 35, 92, .045);
+}
+
+html.dark-mode .ssis-modal-meta>div {
+  background: rgba(140, 150, 255, .08);
+}
+
+.ssis-modal-meta dt {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  font-weight: 700;
+  color: var(--default-color);
+  opacity: .75;
+  margin-bottom: .15rem;
+}
+
+.ssis-modal-meta dd {
+  margin: 0;
+  font-size: .92rem;
+  font-weight: 600;
+  color: var(--heading-color);
+  word-break: break-word;
+}
+
+.ssis-modal-desc-wrap {
+  border-top: 1px dashed rgba(18, 35, 92, .18);
+  padding-top: 1rem;
+}
+
+html.dark-mode .ssis-modal-desc-wrap {
+  border-top-color: rgba(140, 150, 255, .22);
+}
+
+.ssis-modal-desc-title {
+  font-size: .95rem;
+  font-weight: 800;
+  color: var(--heading-color);
+  margin: 0 0 .5rem;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+}
+
+.ssis-modal-desc-title .bi {
+  color: #7c5cff;
+}
+
+.ssis-modal-desc {
+  margin: 0;
+  font-size: .9rem;
+  line-height: 1.7;
+  color: var(--default-color);
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+/* Layar sangat kecil */
+@media (max-width: 400px) {
+  .ssis-card-grid-sm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ssis-modal-body {
+    padding: 1rem;
+  }
+}
+
+/* ==========================================================================
+   7. FALLBACK GAMBAR (kartu & modal) — tampilan rapi saat gambar tidak ada
+   ========================================================================== */
+
+/* Kartu: saat gambar gagal dimuat (onerror), tampilkan latar gradasi lembut */
+.ssis-match-img.is-fallback {
+  background: linear-gradient(135deg, #eef1ff 0%, #e6e9ff 45%, #f3eaff 100%);
+}
+
+html.dark-mode .ssis-match-img.is-fallback {
+  background: linear-gradient(135deg, #171e38 0%, #1c2547 50%, #251d3f 100%);
+}
+
+/* Ikon bawaan <img> yang rusak tidak boleh tampil */
+.ssis-match-img.is-fallback img {
+  display: none;
+}
+
+/* Pengaman: bila <img> gagal dimuat, sembunyikan agar tidak muncul ikon rusak */
+.ssis-match-img img:not([src]) {
+  visibility: hidden;
+}
+
+/* ---- Fallback pada modal ---- */
+.ssis-modal-main-img.is-fallback {
+  background: linear-gradient(135deg, #eef1ff 0%, #e6e9ff 45%, #f3eaff 100%);
+}
+
+html.dark-mode .ssis-modal-main-img.is-fallback {
+  background: linear-gradient(135deg, #171e38 0%, #1c2547 50%, #251d3f 100%);
+}
+
+.ssis-modal-main-img.is-fallback img {
+  display: none;
+}
+
+.ssis-modal-img-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  width: 100%;
+  height: 100%;
+  padding: 1.5rem;
+  text-align: center;
+  color: #6b7cff;
+}
+
+html.dark-mode .ssis-modal-img-fallback {
+  color: #9fa9ff;
+}
+
+.ssis-modal-img-fallback .bi {
+  font-size: 3.4rem;
+  line-height: 1;
+  padding: 1.1rem;
+  border-radius: 50%;
+  background: rgba(124, 92, 255, .12);
+  box-shadow: inset 0 0 0 1px rgba(124, 92, 255, .2);
+}
+
+html.dark-mode .ssis-modal-img-fallback .bi {
+  background: rgba(124, 92, 255, .2);
+  box-shadow: inset 0 0 0 1px rgba(140, 150, 255, .28);
+}
+
+.ssis-modal-img-fallback span {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+  color: var(--heading-color);
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ssis-modal-img-fallback small {
+  font-size: .8rem;
+  opacity: .7;
+  color: var(--default-color);
+}
+
+/* ==========================================================================
+   8. SELARAS TEMA WELCOME (#4154f1 / #f0f4ff / #0f1629)
+   Welcome memakai latar #f0f4ff, aksen #4154f1, dan dark #0f1629.
+   Blok ini menyelaraskan halaman search agar memakai palet yang sama.
+   ========================================================================== */
+
+/* Latar halaman landing (kalau body memakai .ssis-landing-page) */
+body.ssis-landing-page,
+html:has(body.ssis-landing-page) body.ssis-landing-page {
+  background-color: #f0f4ff;
+}
+
+html.dark-mode body.ssis-landing-page {
+  background-color: #0f1629;
+}
+
+/* Judul search: gradasi aksen welcome */
+.ssis-search-heading .bi-stars {
+  background: linear-gradient(135deg, #4154f1, #8ea0ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 6px rgba(65, 84, 241, .35));
+}
+
+html.dark-mode .ssis-search-heading .bi-stars {
+  filter: drop-shadow(0 0 8px rgba(120, 140, 255, .55));
+}
+
+/* Kartu pencarian */
+.ssis-search-card {
+  border-color: rgba(65, 84, 241, .18);
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 18px 50px rgba(65, 84, 241, .12);
+}
+
+html.dark-mode .ssis-search-card {
+  border-color: rgba(65, 84, 241, .35);
+  background: rgba(30, 45, 74, .92);
+}
+
+/* Tombol kamera/upload */
+.ssis-media-btn {
+  border-color: #4154f1;
+  color: #4154f1;
+}
+
+.ssis-media-btn:hover {
+  background: #4154f1;
+}
+
+/* Input teks */
+.ssis-text-input {
+  border-color: rgba(65, 84, 241, .35);
+}
+
+.ssis-text-input:focus {
+  border-color: #4154f1;
+  box-shadow: 0 0 0 .22rem rgba(65, 84, 241, .18);
+}
+
+html.dark-mode .ssis-text-input:focus {
+  box-shadow: 0 0 0 .22rem rgba(65, 84, 241, .28);
+}
+
+/* Tombol search bulat */
+.ssis-text-search-btn {
+  background: #4154f1;
+}
+
+.ssis-text-search-btn:hover {
+  background: #3040d0;
+}
+
+/* Hasil: hitungan, badge, bar */
+.ssis-results-count {
+  background: rgba(65, 84, 241, .12);
+  color: #4154f1;
+}
+
+html.dark-mode .ssis-results-count {
+  background: rgba(65, 84, 241, .22);
+}
+
+.ssis-match-card {
+  border-color: rgba(65, 84, 241, .22);
+}
+
+.ssis-match-card:hover {
+  box-shadow: 0 14px 30px rgba(65, 84, 241, .18);
+}
+
+html.dark-mode .ssis-match-card {
+  background: #1e2d4a;
+}
+
+.ssis-match-card.is-best-match {
+  border-color: #4154f1;
+  box-shadow: 0 0 0 3px rgba(65, 84, 241, .18);
+}
+
+.ssis-best-badge {
+  background: linear-gradient(135deg, #4154f1, #8ea0ff);
+  box-shadow: 0 4px 10px rgba(65, 84, 241, .45);
+}
+
+.ssis-match-bar {
+  background: rgba(65, 84, 241, .12);
+  border-color: rgba(65, 84, 241, .25);
+}
+
+.ssis-match-bar-fill {
+  background: linear-gradient(90deg, #4154f1, #8ea0ff);
+}
+
+.ssis-match-card .ssis-stock-badge,
+.ssis-match-stock .ssis-stock-badge {
+  background: linear-gradient(135deg, #4154f1, #6b7cff) !important;
+}
+
+.ssis-query-highlight {
+  color: #4154f1;
+}
+
+.ssis-results-heading .bi {
+  color: #4154f1;
+}
+
+.ssis-history-link:hover {
+  color: #4154f1;
+}
+
+.ssis-modal-panel {
+  border-color: #4154f1;
+}
+
+html.dark-mode .ssis-modal-panel {
+  background: #1e2d4a;
+}
+
+.ssis-modal-close:hover {
+  background: #4154f1;
+}
+
+.ssis-modal-thumb.is-active {
+  border-color: #4154f1;
+}
+
+.ssis-modal-desc-title .bi,
+.ssis-modal-score-value {
+  color: #4154f1;
+}

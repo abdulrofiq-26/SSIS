@@ -18,8 +18,8 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 db_path = os.path.join(project_root, 'storage', 'app', 'chroma_db') # <-- Path BARU di storage/app/
 client = chromadb.PersistentClient(path=db_path)
 
-# Dapatkan collection yang sudah ada (tidak perlu membuat baru)
-collection = client.get_collection("sparepart_images")
+# Dapatkan atau buat collection jika belum ada
+collection = client.get_or_create_collection("sparepart_images")
 
 # --- Fungsi Ekstraksi Fitur (Sama seperti di skrip indexing) ---
 def extract_features(img_path):
@@ -41,14 +41,23 @@ def main(query_image_path, n_results=5):
 
     if query_vector is not None:
         try:
+            total_items = collection.count()
+            if total_items == 0:
+                # Belum ada data sparepart yang diindeks di ChromaDB
+                print(json.dumps([]))
+                return True
+
+            # Pastikan jumlah hasil yang diminta tidak melebihi total item di database
+            actual_n_results = min(n_results, total_items)
+
             # Lakukan pencarian di ChromaDB
             results = collection.query(
                 query_embeddings=[query_vector.tolist()],
-                n_results=n_results # Berapa hasil teratas yang ingin kita dapatkan
+                n_results=actual_n_results
             )
             
             # Ambil hanya ID dari hasil pencarian
-            ids = results['ids'][0]
+            ids = results['ids'][0] if (results and 'ids' in results and len(results['ids']) > 0) else []
             
             # Cetak hasilnya dalam format JSON agar bisa dibaca Laravel
             print(json.dumps(ids))

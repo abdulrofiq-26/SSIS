@@ -36,7 +36,7 @@
             <div class="mb-3">
                 <label class="form-label d-block">Logo Saat Ini</label>
                 @if ($brand->logo_brand)
-                    <img src="{{ asset('storage/' . $brand->logo_brand) }}" 
+                    <img src="{{ route('storage.media', ltrim($brand->logo_brand, '/')) }}" 
                          alt="{{ $brand->nama_brand }} Logo" 
                          class="brand-logo-img border p-1 mb-2" 
                          style="max-height: 80px;">

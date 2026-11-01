@@ -86,6 +86,32 @@ Route::get('/test-storage', function () {
     }
 });
 
+// Route fallback untuk menyajikan file storage secara langsung
+Route::get('/storage/{path}', function ($path) {
+    $path = ltrim($path, '/');
+    $filePath = storage_path('app/public/' . $path);
+    if (!file_exists($filePath)) {
+        $altPath = storage_path('app/' . $path);
+        if (file_exists($altPath)) {
+            return response()->file($altPath);
+        }
+        abort(404);
+    }
+    return response()->file($filePath);
+})->where('path', '.*')->name('storage.file');
+
+// Route untuk menyajikan gambar dari storage/app/public tanpa prefix 'storage'.
+// Ini menghindari masalah symlink/junction pada PHP built-in server (php artisan serve) di Windows,
+// di mana file statis di dalam folder junction tidak dapat disajikan.
+Route::get('/media/{path}', function ($path) {
+    $path = ltrim($path, '/');
+    $filePath = storage_path('app/public/' . $path);
+    if (!file_exists($filePath)) {
+        abort(404);
+    }
+    return response()->file($filePath);
+})->where('path', '.*')->name('storage.media');
+
 // ROUTE GROUP UNTUK MASTER DATA (Brands & Spareparts)
 Route::group(['prefix' => 'master_data','middleware' => ['auth']],function () {
     

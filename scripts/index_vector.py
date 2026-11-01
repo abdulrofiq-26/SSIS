@@ -46,8 +46,8 @@ def main(image_path, sparepart_id):
     
     if vector is not None:
         try:
-            # Simpan vektor ke ChromaDB
-            collection.add(
+            # Simpan atau perbarui vektor di ChromaDB (upsert mencegah error duplicate ID)
+            collection.upsert(
                 embeddings=[vector.tolist()],
                 ids=[str(sparepart_id)] # ID harus dalam format string
             )
