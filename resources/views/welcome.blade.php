@@ -57,6 +57,11 @@
       --heading: #e8eeff;
       --text: #a0aec0;
     }
+    html.dark-mode body.ssis-landing-page { background-color: var(--bg); color: var(--text); }
+    html.dark-mode .bg-blob { opacity: .18; }
+    html.dark-mode .hero-img-wrapper::before {
+      background: radial-gradient(ellipse at center, rgba(75, 95, 190, .28) 0%, transparent 70%);
+    }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

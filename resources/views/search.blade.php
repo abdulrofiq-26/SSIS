@@ -80,6 +80,8 @@
       overflow-x: hidden;
       position: relative;
     }
+    html.dark-mode body.ssis-landing-page { background-color: var(--bg); color: var(--text); }
+    html.dark-mode .bg-blob { opacity: .18; }
     .bg-blob {
       position: fixed;
       border-radius: 50%;
@@ -176,6 +178,33 @@
     }
     /* ===== Search — selaras welcome ===== */
     .ssis-search-section { width: 100%; padding: 0 clamp(16px, 4vw, 80px); }
+    html.dark-mode .ssis-search-section { color: var(--text); }
+    html.dark-mode .ssis-search-main { background-color: var(--bg); }
+    html.dark-mode .ssis-search-card .card-body { color: var(--text); }
+    html.dark-mode .ssis-history-title,
+    html.dark-mode .ssis-hint { color: var(--heading); }
+    html.dark-mode .ssis-history-link { color: var(--text); }
+    html.dark-mode .ssis-results-heading,
+    html.dark-mode .ssis-match-name,
+    html.dark-mode .ssis-match-meta { color: var(--heading); }
+    html.dark-mode .ssis-match-body,
+    html.dark-mode .ssis-match-stock { color: var(--text); }
+    html.dark-mode .ssis-brands-heading { color: var(--heading); }
+    .ssis-card-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+    .ssis-card-grid-sm { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+    .ssis-upload-preview {
+      display: flex; align-items: center; justify-content: center; gap: .75rem;
+      margin: -0.4rem auto 1.2rem; color: var(--text); font-size: .85rem;
+    }
+    .ssis-upload-preview[hidden] { display: none; }
+    .ssis-upload-preview img {
+      width: 56px; height: 56px; object-fit: cover; border-radius: 10px;
+      border: 1px solid rgba(65,84,241,.35); background: #fff;
+    }
+    .ssis-upload-preview span { max-width: min(70vw, 360px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    html.dark-mode .ssis-upload-preview { color: var(--heading); }
+    html.dark-mode .ssis-search-card .alert-warning,
+    html.dark-mode .ssis-search-card .alert-danger { color: #f0d99b; }
     .ssis-search-title-wrap { text-align: center; margin-bottom: 1.1rem; }
     .ssis-search-heading {
       display: flex; align-items: center; justify-content: center; gap: .6rem;
@@ -190,7 +219,8 @@
       -webkit-text-fill-color: transparent;
     }
     .ssis-search-container { width: 100%; max-width: 100%; padding: 0; }
-    .ssis-search-shell { width: 100%; max-width: 1100px; margin: 0 auto; }
+    .ssis-search-shell { width: 100%; max-width: none; margin: 0 auto; }
+    .ssis-search-shell > .ssis-search-card { width: 100%; max-width: none; }
     .ssis-search-card {
       width: 100% !important;
       border-radius: 20px !important;
@@ -253,6 +283,14 @@
     }
     @media (max-width: 575px) {
       .ssis-search-section { padding: 0 14px; }
+    }
+    /* Thumbnail kecil untuk hasil pencarian: unggahan/kamera tetap berupa hasil sparepart. */
+    .ssis-match-card-sm .ssis-match-img { aspect-ratio: 1 / 1; }
+    .ssis-match-card-sm .ssis-match-img img { object-fit: contain; padding: .45rem; }
+    .ssis-match-card-sm .ssis-match-body { padding: .65rem .8rem; }
+    .ssis-match-card-sm .ssis-match-meta { font-size: .78rem; }
+    @media (min-width: 576px) {
+      .ssis-search-section { padding-left: clamp(16px, 2vw, 32px); padding-right: clamp(16px, 2vw, 32px); }
     }
   </style>
 </head>
@@ -342,6 +380,10 @@
                                   <i class="bi bi-cloud-arrow-up-fill"></i>
                               </label>
                               <input type="file" id="upload-image-input" class="d-none" accept="image/*">
+                          </div>
+                          <div class="ssis-upload-preview" id="ssis-upload-preview" hidden aria-live="polite">
+                              <img id="ssis-upload-preview-image" alt="Pratinjau gambar yang dipilih">
+                              <span id="ssis-upload-preview-name"></span>
                           </div>
                       </form>
 
@@ -730,18 +772,76 @@
 
         function handleFileSelection(event) {
             if (event.target.files.length > 0) {
-                // Pastikan hanya input yang dipilih yang mengirim file bernama 'image'
-                uploadInput.name = '';
-                cameraInput.name = '';
-                event.target.name = 'image';
-
-                // Tampilkan animasi menunggu SEBELUM submit (form.submit() tidak
-                // memicu event 'submit', jadi overlay dipanggil eksplisit).
-                if (window.SSISLoader && typeof window.SSISLoader.imageSearch === 'function') {
-                    window.SSISLoader.imageSearch();
+                const selectedFile = event.target.files[0];
+                const preview = document.getElementById('ssis-upload-preview');
+                const previewImage = document.getElementById('ssis-upload-preview-image');
+                const previewName = document.getElementById('ssis-upload-preview-name');
+                if (preview && previewImage && previewName) {
+                    if (previewImage.dataset.objectUrl) URL.revokeObjectURL(previewImage.dataset.objectUrl);
+                    const objectUrl = URL.createObjectURL(selectedFile);
+                    previewImage.src = objectUrl;
+                    previewImage.dataset.objectUrl = objectUrl;
+                    previewName.textContent = selectedFile.name;
+                    preview.hidden = false;
                 }
 
-                form.submit();
+                // Tunda submit agar pratinjau pilihan benar-benar sempat terlihat;
+                // setelah server merespons, tampilkan lagi foto yang dikirim.
+                // Simpan salinan lokal agar thumbnail tetap ada setelah halaman hasil dimuat.
+                if (event.target.dataset.submitPending === 'true') return;
+                event.target.dataset.submitPending = 'true';
+                const submitImageSearch = function () {
+                    // Pastikan hanya input yang dipilih yang mengirim file bernama 'image'
+                    uploadInput.name = '';
+                    cameraInput.name = '';
+                    event.target.name = 'image';
+
+                    // Tampilkan animasi menunggu SEBELUM submit (form.submit() tidak
+                    // memicu event 'submit', jadi overlay dipanggil eksplisit).
+                    if (window.SSISLoader && typeof window.SSISLoader.imageSearch === 'function') {
+                        window.SSISLoader.imageSearch();
+                    }
+
+                    form.submit();
+                };
+
+                // Simpan salinan lokal untuk mempertahankan pratinjau pada halaman hasil.
+                const fileReader = new FileReader();
+                fileReader.onload = function (loadEvent) {
+                    try {
+                        localStorage.setItem(lastImageKey, JSON.stringify({
+                            name: selectedFile.name,
+                            dataUrl: loadEvent.target.result
+                        }));
+                    } catch (e) {
+                        // Kalau file terlalu besar, pratinjau pilihan tetap terlihat sebelum submit.
+                    }
+                    window.setTimeout(submitImageSearch, 350);
+                };
+                fileReader.onerror = function () {
+                    window.setTimeout(submitImageSearch, 350);
+                };
+                fileReader.readAsDataURL(selectedFile);
+            }
+        }
+
+        // Bila server mengembalikan hasil pencarian, pertahankan thumbnail foto
+        // yang dicari di halaman hasil setelah navigasi/reload.
+        const lastImageKey = 'ssis-last-image-search';
+        const lastImagePreview = document.getElementById('ssis-upload-preview');
+        const lastImageElement = document.getElementById('ssis-upload-preview-image');
+        const lastImageName = document.getElementById('ssis-upload-preview-name');
+        if (lastImagePreview && lastImageElement && lastImageName) {
+            try {
+                const previousImage = localStorage.getItem(lastImageKey);
+                if (previousImage) {
+                    const parsedImage = JSON.parse(previousImage);
+                    lastImageElement.src = parsedImage.dataUrl;
+                    lastImageName.textContent = parsedImage.name || 'Gambar pencarian';
+                    lastImagePreview.hidden = false;
+                }
+            } catch (e) {
+                localStorage.removeItem(lastImageKey);
             }
         }
 
@@ -797,13 +897,15 @@
             wrap.hidden = false;
         }
 
-        // Simpan query saat form pencarian TEKS disubmit.
+        // Pencarian kata kunci menggantikan pencarian gambar sebelumnya.
         const textForm = document.querySelector('.ssis-search-form');
         if (textForm) {
             textForm.addEventListener('submit', function () {
                 const input = textForm.querySelector('input[name="search_query"]');
                 const q = input ? input.value.trim() : '';
                 if (!q) return;
+                try { localStorage.removeItem(lastImageKey); } catch (e) {}
+                if (lastImagePreview) lastImagePreview.hidden = true;
 
                 let items = getHistory().filter(function (x) {
                     return String(x).toLowerCase() !== q.toLowerCase();
@@ -813,9 +915,14 @@
             });
         }
 
-        // Bila sedang menampilkan hasil pencarian, simpan query-nya juga.
+        // Bila halaman hasil menampilkan query teks, bersihkan pratinjau gambar lama
+        // (termasuk saat halaman hasil di-refresh).
         const currentQuery = @json($query ?? null);
         const isResultPage = @json(isset($results) && !empty($query));
+        if (isResultPage && currentQuery) {
+            try { localStorage.removeItem(lastImageKey); } catch (e) {}
+            if (lastImagePreview) lastImagePreview.hidden = true;
+        }
         if (isResultPage && currentQuery) {
             let items = getHistory().filter(function (x) {
                 return String(x).toLowerCase() !== String(currentQuery).toLowerCase();
